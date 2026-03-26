@@ -19,12 +19,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
+    const text = await res.text();
+    let json: Record<string, unknown> = {};
+    try { json = JSON.parse(text); } catch { /* empty body or non-JSON */ }
     if (!res.ok) {
-      const data = await res.json() as { error?: string };
-      throw new Error(data.error ?? 'Erreur de connexion.');
+      throw new Error((json.error as string | undefined) ?? 'Identifiants invalides.');
     }
-    const data = await res.json() as { token: string };
-    setToken(data.token);
+    setToken((json as { token: string }).token);
   }, []);
 
   const logout = useCallback(() => setToken(null), []);
