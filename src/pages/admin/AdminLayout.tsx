@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useAdmin } from '../../context/AdminContext';
 import styles from './AdminLayout.module.css';
 
@@ -24,6 +25,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className={styles.shell}>
+      <Helmet>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <nav className={styles.nav}>
         <Link to="/admin/dashboard" className={styles.navLogo}>
           Gate<span className={styles.ctr}>C</span>tr Admin

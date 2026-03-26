@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { useAdmin } from '../../context/AdminContext';
 import styles from './AdminLogin.module.css';
 
@@ -31,6 +32,9 @@ export default function AdminLogin() {
 
   return (
     <div className={styles.page}>
+      <Helmet>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className={styles.card}>
         <div className={styles.logo}>
           Gate<span className={styles.ctr}>C</span>tr
