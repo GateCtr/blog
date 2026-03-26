@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import AdminLayout from './AdminLayout';
 import { useAdmin } from '../../context/AdminContext';
 import styles from './AdminEditor.module.css';
@@ -67,10 +68,11 @@ export default function AdminEditor() {
 
   useEffect(() => {
     const result = marked.parse(body || '');
+    const setClean = (html: string) => setPreview(DOMPurify.sanitize(html));
     if (typeof result === 'string') {
-      setPreview(result);
+      setClean(result);
     } else {
-      result.then(setPreview);
+      result.then(setClean);
     }
   }, [body]);
 
@@ -80,7 +82,13 @@ export default function AdminEditor() {
     fetch(`/api/admin/articles/${urlLang}/${urlSlug}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) {
+          const d = await r.json() as { error?: string };
+          throw new Error(d.error ?? `Erreur ${r.status}`);
+        }
+        return r.json() as Promise<ArticlePayload>;
+      })
       .then((data: ArticlePayload) => {
         const fm = data.frontmatter;
         setLang(data.lang);
@@ -93,7 +101,10 @@ export default function AdminEditor() {
         setReadTime(String(fm.readTime ?? 5));
         setBody(data.body ?? '');
       })
-      .catch(() => setError("Impossible de charger l'article."))
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : "Impossible de charger l'article.";
+        setError(msg);
+      })
       .finally(() => setLoadingArticle(false));
   }, [isEditMode, urlLang, urlSlug, token]);
 
