@@ -10,8 +10,25 @@ interface AdminContextValue {
 
 const AdminContext = createContext<AdminContextValue | null>(null);
 
+const STORAGE_KEY = 'gatectr_admin_token';
+
+function loadStoredToken(): string | null {
+  try {
+    const t = localStorage.getItem(STORAGE_KEY);
+    if (!t) return null;
+    const payload = JSON.parse(atob(t.split('.')[1])) as { exp?: number };
+    if (payload.exp && Date.now() / 1000 > payload.exp) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return t;
+  } catch {
+    return null;
+  }
+}
+
 export function AdminProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(loadStoredToken);
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await fetch('/api/admin/login', {
@@ -25,10 +42,15 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     if (!res.ok) {
       throw new Error((json.error as string | undefined) ?? 'Identifiants invalides.');
     }
-    setToken((json as { token: string }).token);
+    const t = (json as { token: string }).token;
+    localStorage.setItem(STORAGE_KEY, t);
+    setToken(t);
   }, []);
 
-  const logout = useCallback(() => setToken(null), []);
+  const logout = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    setToken(null);
+  }, []);
 
   return (
     <AdminContext.Provider value={{ token, isAuthenticated: !!token, login, logout }}>
