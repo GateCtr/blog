@@ -7,6 +7,9 @@ import styles from './Home.module.css';
 const posts = getPosts();
 const categories = getCategories();
 
+const META_DESC =
+  'Guides, benchmarks, and strategies to optimize and scale your LLM usage. Cut AI costs, master model routing, and build smarter systems.';
+
 const websiteSchema = {
   '@context': 'https://schema.org',
   '@graph': [
@@ -14,8 +17,7 @@ const websiteSchema = {
       '@type': 'WebSite',
       name: 'GateCtr Blog',
       url: 'https://blog.gatectr.com',
-      description:
-        'Practical insights on LLM cost optimization, model routing, and AI infrastructure for engineering teams.',
+      description: META_DESC,
       publisher: {
         '@type': 'Organization',
         name: 'GateCtr',
@@ -26,8 +28,7 @@ const websiteSchema = {
       '@type': 'Blog',
       name: 'GateCtr Blog',
       url: 'https://blog.gatectr.com',
-      description:
-        'Practical insights on LLM cost optimization, model routing, and AI infrastructure for engineering teams.',
+      description: META_DESC,
       publisher: {
         '@type': 'Organization',
         name: 'GateCtr',
@@ -57,20 +58,38 @@ export default function Home() {
     <div className={styles.page}>
       <SEO
         title="The GateCtr Blog"
-        description="Practical insights on LLM cost optimization, model routing, and AI infrastructure for engineering teams."
+        description={META_DESC}
         canonical="/"
         jsonLd={websiteSchema}
       />
 
       <section className={styles.hero}>
         <div className={styles.heroContent}>
-          <div className={styles.heroBadge}>LLM Infrastructure</div>
+          <div className={styles.heroBadge}>Cost · Routing · Infrastructure</div>
           <h1 className={styles.heroTitle}>
-            The <span className={styles.highlight}>GateCtr</span> Blog
+            Stop wasting money on AI.
           </h1>
           <p className={styles.heroSub}>
-            Practical insights on LLM cost optimization, model routing, and AI infrastructure for engineering teams.
+            Guides, benchmarks, and strategies to optimize and scale your LLM usage.
           </p>
+          <div className={styles.heroCtas}>
+            <a
+              href="https://app.gatectr.com/sign-up"
+              className={styles.heroPrimary}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Start using GateCtr →
+            </a>
+            <a
+              href="https://docs.gatectr.com"
+              className={styles.heroSecondary}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View docs →
+            </a>
+          </div>
           <div className={styles.searchWrap}>
             <input
               type="search"
