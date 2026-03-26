@@ -99,15 +99,17 @@ pre, code {
 }
 
 pre {
-  background: #0d1117;
-  color: #e6edf3;
-  padding: 1.25rem 1.5rem;
   border-radius: var(--radius-sm);
   overflow-x: auto;
-  font-size: 0.875rem;
-  line-height: 1.65;
   margin: 1.5rem 0;
   border: 1px solid #21262d;
+  background: #0d1117;
+}
+
+pre code.hljs {
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  line-height: 1.65;
 }
 
 code:not(pre code) {

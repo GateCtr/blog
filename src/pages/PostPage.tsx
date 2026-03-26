@@ -3,6 +3,7 @@ import { MDXProvider } from '@mdx-js/react';
 import { getPostBySlug, getPosts } from '../lib/posts';
 import SEO from '../components/SEO';
 import styles from './PostPage.module.css';
+import 'highlight.js/styles/github-dark.css';
 
 const BASE_URL = 'https://blog.gatectr.com';
 

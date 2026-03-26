@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import mdx from '@mdx-js/rollup'
 import remarkFrontmatter from 'remark-frontmatter'
 import remarkMdxFrontmatter from 'remark-mdx-frontmatter'
+import rehypeHighlight from 'rehype-highlight'
 import { readFileSync, readdirSync, writeFileSync } from 'fs'
 import { resolve, join } from 'path'
 import { fileURLToPath } from 'url'
@@ -61,6 +62,7 @@ export default defineConfig({
       enforce: 'pre',
       ...mdx({
         remarkPlugins: [remarkFrontmatter, remarkMdxFrontmatter],
+        rehypePlugins: [rehypeHighlight],
         providerImportSource: '@mdx-js/react',
       }),
     },
