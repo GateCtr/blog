@@ -1,7 +1,7 @@
 ---
 slug: complete-guide-to-gatectr
 title: "The Complete Guide to GateCtr: Cut LLM Costs by 40% Without Changing Your Code"
-excerpt: GateCtr is an LLM gateway that sits between your app and any AI provider. One endpoint swap gives you prompt compression, budget controls, intelligent model routing, and real-time analytics — no code refactor needed.
+excerpt: GateCtr sits between your app and any LLM provider. One endpoint swap gives you -40% token costs, hard budget caps, smart routing, and real-time analytics.
 author: GateCtr Team
 date: 2026-03-26
 category: AI Infrastructure
