@@ -5,11 +5,11 @@ export default function Footer() {
     <footer className={styles.footer}>
       <div className={styles.container}>
         <div className={styles.links}>
-          <a href="https://gatectr.com" target="_blank" rel="noopener noreferrer" className={styles.link}>gatectr.com</a>
+          <a href="https://gatectr.com" target="_blank" rel="noopener noreferrer" className={styles.link}>Home</a>
           <span className={styles.sep}>·</span>
           <a href="https://app.gatectr.com/sign-in" target="_blank" rel="noopener noreferrer" className={styles.link}>Sign in</a>
           <span className={styles.sep}>·</span>
-          <a href="https://docs.gatectr.com" target="_blank" rel="noopener noreferrer" className={styles.link}>docs.gatectr.com</a>
+          <a href="https://docs.gatectr.com" target="_blank" rel="noopener noreferrer" className={styles.link}>Docs</a>
         </div>
         <p className={styles.copy}>© {new Date().getFullYear()} GateCtr. Cut LLM costs by 40%.</p>
       </div>
