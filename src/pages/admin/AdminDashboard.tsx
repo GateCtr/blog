@@ -30,6 +30,7 @@ export default function AdminDashboard() {
   const [articles, setArticles] = useState<ArticleMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteKey, setDeleteKey] = useState<string | null>(null);
+  const [langTab, setLangTab] = useState<'en' | 'fr'>('en');
   const [error, setError] = useState('');
 
   async function loadData() {
@@ -167,34 +168,46 @@ export default function AdminDashboard() {
       </section>
 
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Articles publiés ({articles.length})</h2>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>
+            Articles publiés ({articles.length})
+          </h2>
+          <div className={styles.tabs}>
+            <button
+              className={`${styles.tab} ${langTab === 'en' ? styles.tabActive : ''}`}
+              onClick={() => setLangTab('en')}
+            >
+              EN <span className={styles.tabCount}>{articles.filter(a => a.lang === 'en').length}</span>
+            </button>
+            <button
+              className={`${styles.tab} ${langTab === 'fr' ? styles.tabActive : ''}`}
+              onClick={() => setLangTab('fr')}
+            >
+              FR <span className={styles.tabCount}>{articles.filter(a => a.lang === 'fr').length}</span>
+            </button>
+          </div>
+        </div>
         {loading ? (
           <p className={styles.hint}>Chargement…</p>
-        ) : articles.length === 0 ? (
-          <p className={styles.hint}>Aucun article trouvé.</p>
+        ) : articles.filter(a => a.lang === langTab).length === 0 ? (
+          <p className={styles.hint}>Aucun article {langTab.toUpperCase()} trouvé.</p>
         ) : (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
                 <tr>
                   <th>Titre</th>
-                  <th>Lang</th>
                   <th>Catégorie</th>
                   <th>Date</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {articles.map(a => {
+                {articles.filter(a => a.lang === langTab).map(a => {
                   const key = `${a.lang}-${a.slug}`;
                   return (
                     <tr key={key}>
                       <td className={styles.titleCell}>{a.title}</td>
-                      <td>
-                        <span className={`${styles.badge} ${a.lang === 'fr' ? styles.badgeFr : styles.badgeEn}`}>
-                          {a.lang.toUpperCase()}
-                        </span>
-                      </td>
                       <td>{a.category}</td>
                       <td className={styles.dateCell}>{a.date}</td>
                       <td className={styles.actionsCell}>

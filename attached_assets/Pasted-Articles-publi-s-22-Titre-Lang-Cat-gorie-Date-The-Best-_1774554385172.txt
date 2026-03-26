@@ -1,0 +1,24 @@
+Articles publiés (22)
+Titre	Lang	Catégorie	Date	
+The Best LLM Routing Strategies in 2026	EN	Model Routing	2026-03-17	
+OpenAI vs Anthropic vs Google: How to Choose the Right LLM Provider	EN	Model Routing	2026-02-24	
+The Complete Guide to Context Window Optimization for LLMs	EN	Cost Optimization	2026-03-17	
+How to Cut LLM Costs by 40% Without Changing Your Code	EN	Cost Optimization	2026-03-22	
+How to Reduce OpenAI API Costs: 7 Practical Techniques	EN	Cost Optimization	2026-03-24	
+LLM Budget Controls Every Engineering Team Needs in Production	EN	Operations	2026-03-07	
+LLM Model Routing Explained: Send Every Task to the Right Model	EN	Model Routing	2026-03-12	
+OpenAI vs Anthropic Pricing in 2026: Full Cost Comparison	EN	Cost Optimization	2026-03-19	
+OpenRouter vs GateCtr vs Direct APIs: Which Should You Use?	EN	Model Routing	2026-03-05	
+What a Good LLM Usage Dashboard Actually Tells You	EN	Operations	2026-03-01	
+Why Your AI Bill Is Exploding (and How to Fix It)	EN	Cost Optimization	2026-03-10	
+Les meilleures stratégies de routage LLM en 2026	FR	Routage de modèles	2026-03-17	
+OpenAI vs Anthropic vs Google : comment choisir le bon fournisseur LLM	FR	Infrastructure IA	2026-02-24	
+Guide complet de l'optimisation de la fenêtre de contexte pour les LLMs	FR	Optimisation des coûts	2026-03-17	
+Comment réduire vos coûts LLM de 40 % sans modifier votre code	FR	Optimisation des coûts	2026-03-22	
+Comment réduire vos coûts OpenAI : 7 techniques concrètes	FR	Optimisation des coûts	2026-03-24	
+Les contrôles budgétaires LLM indispensables en production pour les équipes d'ingénierie	FR	Optimisation des coûts	2026-03-07	
+Le routage de modèles LLM expliqué : envoyez chaque tâche au bon modèle	FR	Routage de modèles	2026-03-12	
+OpenAI vs Anthropic : comparaison complète des prix en 2026	FR	Optimisation des coûts	2026-03-19	
+OpenRouter vs GateCtr vs APIs directes : lequel choisir ?	FR	Routage de modèles	2026-03-05	
+Ce qu'un bon tableau de bord d'usage LLM vous dit vraiment	FR	Infrastructure IA	2026-03-01	
+Pourquoi votre facture IA explose (et comment y remédier)	FR	Optimisation des coûts	2026-03-10	
