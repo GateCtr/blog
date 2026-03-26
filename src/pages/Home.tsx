@@ -1,46 +1,37 @@
 import { useState } from 'react';
 import { getPosts, getCategories } from '../lib/posts';
+import { useLang } from '../context/LangContext';
+import { useTranslations } from '../lib/i18n';
 import PostCard from '../components/PostCard';
 import SEO from '../components/SEO';
 import styles from './Home.module.css';
 
-const posts = getPosts();
-const categories = getCategories();
-
-const META_DESC =
-  'Guides, benchmarks, and strategies to optimize and scale your LLM usage. Cut AI costs, master model routing, and build smarter systems.';
-
-const websiteSchema = {
+const websiteSchemaBase = {
   '@context': 'https://schema.org',
   '@graph': [
     {
       '@type': 'WebSite',
       name: 'GateCtr Blog',
       url: 'https://blog.gatectr.com',
-      description: META_DESC,
-      publisher: {
-        '@type': 'Organization',
-        name: 'GateCtr',
-        url: 'https://gatectr.com',
-      },
+      publisher: { '@type': 'Organization', name: 'GateCtr', url: 'https://gatectr.com' },
     },
     {
       '@type': 'Blog',
       name: 'GateCtr Blog',
       url: 'https://blog.gatectr.com',
-      description: META_DESC,
-      publisher: {
-        '@type': 'Organization',
-        name: 'GateCtr',
-        url: 'https://gatectr.com',
-      },
+      publisher: { '@type': 'Organization', name: 'GateCtr', url: 'https://gatectr.com' },
     },
   ],
 };
 
 export default function Home() {
+  const { lang } = useLang();
+  const tr = useTranslations(lang);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+
+  const posts = getPosts(lang);
+  const categories = getCategories(lang);
 
   const filtered = posts.filter(post => {
     const matchesCategory = !selectedCategory || post.category === selectedCategory;
@@ -54,24 +45,25 @@ export default function Home() {
   const featured = filtered[0];
   const rest = filtered.slice(1);
 
+  const websiteSchema = {
+    ...websiteSchemaBase,
+    '@graph': websiteSchemaBase['@graph'].map(g => ({ ...g, description: tr.seo.homeDesc })),
+  };
+
   return (
     <div className={styles.page}>
       <SEO
-        title="The GateCtr Blog"
-        description={META_DESC}
+        title={tr.seo.homeTitle}
+        description={tr.seo.homeDesc}
         canonical="/"
         jsonLd={websiteSchema}
       />
 
       <section className={styles.hero}>
         <div className={styles.heroContent}>
-          <div className={styles.heroBadge}>Cost · Routing · Infrastructure</div>
-          <h1 className={styles.heroTitle}>
-            Stop wasting money on AI.
-          </h1>
-          <p className={styles.heroSub}>
-            Guides, benchmarks, and strategies to optimize and scale your LLM usage.
-          </p>
+          <div className={styles.heroBadge}>{tr.hero.badge}</div>
+          <h1 className={styles.heroTitle}>{tr.hero.title}</h1>
+          <p className={styles.heroSub}>{tr.hero.sub}</p>
           <div className={styles.heroCtas}>
             <a
               href="https://app.gatectr.com/sign-up"
@@ -79,7 +71,7 @@ export default function Home() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Start using GateCtr →
+              {tr.hero.ctaPrimary}
             </a>
             <a
               href="https://docs.gatectr.com"
@@ -87,13 +79,13 @@ export default function Home() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              View docs →
+              {tr.hero.ctaSecondary}
             </a>
           </div>
           <div className={styles.searchWrap}>
             <input
               type="search"
-              placeholder="Search articles..."
+              placeholder={tr.hero.searchPlaceholder}
               value={search}
               onChange={e => setSearch(e.target.value)}
               className={styles.search}
@@ -105,14 +97,14 @@ export default function Home() {
       <div className={styles.main}>
         <aside className={styles.sidebar}>
           <div className={styles.sidebarSection}>
-            <h3 className={styles.sidebarTitle}>Topics</h3>
+            <h3 className={styles.sidebarTitle}>{tr.sidebar.topics}</h3>
             <ul className={styles.categoryList}>
               <li>
                 <button
                   className={`${styles.categoryBtn} ${!selectedCategory ? styles.active : ''}`}
                   onClick={() => setSelectedCategory(null)}
                 >
-                  All Posts
+                  {tr.sidebar.allPosts}
                   <span className={styles.count}>{posts.length}</span>
                 </button>
               </li>
@@ -131,10 +123,10 @@ export default function Home() {
           </div>
 
           <div className={styles.ctaBanner}>
-            <div className={styles.ctaBannerTitle}>Cut LLM costs by 40%</div>
-            <p className={styles.ctaBannerText}>One endpoint swap. Full control over tokens, budgets, and routing.</p>
+            <div className={styles.ctaBannerTitle}>{tr.sidebar.ctaTitle}</div>
+            <p className={styles.ctaBannerText}>{tr.sidebar.ctaText}</p>
             <a href="https://app.gatectr.com/sign-up" className={styles.ctaBannerBtn} target="_blank" rel="noopener noreferrer">
-              Start free →
+              {tr.sidebar.ctaBtn}
             </a>
           </div>
         </aside>
@@ -142,7 +134,7 @@ export default function Home() {
         <div className={styles.content}>
           {filtered.length === 0 ? (
             <div className={styles.empty}>
-              <p>No articles found. Try a different search or topic.</p>
+              <p>{tr.feed.empty}</p>
             </div>
           ) : (
             <>

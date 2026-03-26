@@ -1,0 +1,226 @@
+---
+slug: llm-budget-controls-for-teams
+title: Les contrôles budgétaires LLM indispensables en production pour les équipes d'ingénierie
+excerpt: Les coûts LLM incontrôlés prennent de court beaucoup d'équipes. Plafonds, alertes et limites de débit sont indispensables — voici comment les implémenter.
+author: GateCtr Team
+date: "2026-03-07"
+category: Optimisation des coûts
+readTime: 8
+---
+
+Une équipe d'ingénierie reçoit une notification de dépense inhabituelle à 3 h du matin. Un agent qui tourne en boucle depuis la veille a consommé 8 000 $ en une nuit. Le budget mensuel prévu était de 3 000 $. Le compte est maintenant bloqué.
+
+Ce scénario se répète chaque mois dans des équipes sérieuses, avec du code bien testé. Le problème n'est pas l'agent — c'est l'absence de couche de contrôle budgétaire entre l'application et l'API du fournisseur.
+
+Les contrôles budgétaires LLM ne sont pas optionnels en production. Voici les trois couches qu'il faut implémenter, et comment le faire correctement.
+
+## Couche 1 : Plafonds stricts
+
+Un plafond strict bloque toute requête qui ferait dépasser un seuil de dépense défini. Il ne prévient pas — il bloque. C'est la seule protection contre les événements catastrophiques.
+
+```python
+import asyncio
+from dataclasses import dataclass
+from datetime import datetime, timezone
+
+@dataclass
+class ConfigBudget:
+    plafond_quotidien_usd: float
+    plafond_mensuel_usd: float
+    plafond_par_utilisateur_usd: float | None = None
+
+TARIFS_MODELE = {
+    "gpt-4o":        (5.0,  15.0),
+    "gpt-4o-mini":   (0.15,  0.60),
+    "o3-mini":       (1.10,  4.40),
+    "claude-3-7-sonnet": (3.0, 15.0),
+}
+
+class PareFeuxBudget:
+    def __init__(self, config: ConfigBudget, db):
+        self.config = config
+        self.db = db
+    
+    async def verifier_avant_requete(
+        self,
+        modele: str,
+        tokens_entree_estimes: int,
+        utilisateur_id: str | None = None
+    ) -> None:
+        tarif_e, tarif_s = TARIFS_MODELE.get(modele, (5.0, 15.0))
+        cout_estime = tokens_entree_estimes * tarif_e / 1_000_000
+        
+        depense_jour = await self.db.get_depense_depuis(
+            datetime.now(timezone.utc).replace(hour=0, minute=0, second=0)
+        )
+        if depense_jour + cout_estime > self.config.plafond_quotidien_usd:
+            raise BudgetDepasseError(
+                f"Plafond quotidien atteint : ${depense_jour:.2f} / "
+                f"${self.config.plafond_quotidien_usd:.2f}"
+            )
+        
+        if utilisateur_id and self.config.plafond_par_utilisateur_usd:
+            depense_user = await self.db.get_depense_utilisateur_jour(utilisateur_id)
+            if depense_user + cout_estime > self.config.plafond_par_utilisateur_usd:
+                raise BudgetDepasseError(
+                    f"Plafond utilisateur {utilisateur_id} atteint"
+                )
+
+class BudgetDepasseError(Exception):
+    pass
+```
+
+**Points clés :**
+- Le plafond doit être imposé *avant* la requête, pas après
+- Implémenter des plafonds à plusieurs niveaux : global, par projet, par utilisateur
+- Configurer également le plafond au niveau du compte fournisseur comme filet de sécurité
+
+## Couche 2 : Alertes douces
+
+Les alertes douces préviennent sans bloquer. Elles donnent à l'équipe le temps de réagir avant d'atteindre le plafond strict.
+
+```python
+from enum import Enum
+import smtplib
+from email.message import EmailMessage
+
+class NiveauAlerte(Enum):
+    INFO    = 0.50   # 50 % du budget consommé
+    AVERT   = 0.75   # 75 % du budget consommé
+    URGENT  = 0.90   # 90 % du budget consommé
+
+async def verifier_alertes(
+    depense_courante: float,
+    plafond: float,
+    canal_notif: str
+) -> None:
+    taux = depense_courante / plafond
+    
+    for niveau in sorted(NiveauAlerte, key=lambda n: n.value, reverse=True):
+        if taux >= niveau.value:
+            derniere_alerte = await db.get_derniere_alerte(niveau.name)
+            
+            if derniere_alerte is None or est_nouvelle_periode(derniere_alerte):
+                await envoyer_alerte(
+                    niveau=niveau.name,
+                    depense=depense_courante,
+                    plafond=plafond,
+                    taux=taux,
+                    canal=canal_notif
+                )
+                await db.enregistrer_alerte(niveau.name)
+            break
+
+async def envoyer_alerte(
+    niveau: str,
+    depense: float,
+    plafond: float,
+    taux: float,
+    canal: str
+) -> None:
+    message = (
+        f"🚨 Alerte budget LLM [{niveau}]\n"
+        f"Dépense actuelle : ${depense:.2f} ({taux:.0%} du plafond)\n"
+        f"Plafond : ${plafond:.2f}\n"
+        f"Action recommandée : vérifier les agents actifs et les patterns inhabituels."
+    )
+    await envoyer_vers_slack(canal, message)
+```
+
+## Couche 3 : Limites de débit par entité
+
+Les plafonds en dollars sont nécessaires mais insuffisants. Les limites de débit empêchent les patterns abusifs avant qu'ils n'atteignent le seuil financier.
+
+```python
+import time
+from collections import defaultdict
+
+class LimiteurDebit:
+    def __init__(self):
+        self._compteurs: dict[str, list[float]] = defaultdict(list)
+    
+    def verifier(
+        self,
+        cle: str,
+        max_requetes: int,
+        fenetre_secondes: int
+    ) -> bool:
+        maintenant = time.time()
+        limite = maintenant - fenetre_secondes
+        
+        self._compteurs[cle] = [
+            t for t in self._compteurs[cle] if t > limite
+        ]
+        
+        if len(self._compteurs[cle]) >= max_requetes:
+            return False
+        
+        self._compteurs[cle].append(maintenant)
+        return True
+
+limiteur = LimiteurDebit()
+
+def appel_llm_avec_limite(
+    utilisateur_id: str,
+    messages: list[dict],
+    modele: str = "gpt-4o-mini"
+) -> str:
+    # 60 requêtes par minute par utilisateur
+    if not limiteur.verifier(f"user:{utilisateur_id}", 60, 60):
+        raise RuntimeError(f"Limite de débit dépassée pour {utilisateur_id}")
+    
+    # 5 requêtes par seconde par agent
+    agent_id = obtenir_agent_courant()
+    if not limiteur.verifier(f"agent:{agent_id}", 5, 1):
+        raise RuntimeError(f"Limite de débit dépassée pour l'agent {agent_id}")
+    
+    return effectuer_appel_llm(messages, modele)
+```
+
+## Tableau de bord des contrôles budgétaires
+
+Un bon système de contrôle budgétaire expose ces métriques en temps réel :
+
+| Métrique | Granularité | Utilité |
+|----------|-------------|---------|
+| Dépense totale du jour | Par heure | Détection précoce des anomalies |
+| Dépense par endpoint | Par requête | Identification des points chauds |
+| Dépense par utilisateur | Par jour | Détection des abus |
+| Coût moyen par requête | Par semaine | Suivi de la tendance d'optimisation |
+| Taux de refus budget | Par jour | Efficacité des plafonds |
+
+## GateCtr : pare-feu budgétaire intégré
+
+Implémenter ces trois couches correctement prend du temps et demande de la maintenance. Le pare-feu budgétaire GateCtr applique automatiquement plafonds stricts, alertes et limites de débit sur chaque requête, avec une configuration en quelques minutes.
+
+```yaml
+# Configuration GateCtr (exemples de politiques)
+budget:
+  quotidien_usd: 500
+  mensuel_usd: 8000
+  par_utilisateur_quotidien_usd: 10
+  alertes:
+    - seuil: 0.50
+      canal: "#alerts-llm"
+    - seuil: 0.90
+      canal: "#urgent-llm"
+debit:
+  par_utilisateur_par_minute: 60
+  par_agent_par_seconde: 5
+```
+
+[Commencer gratuitement →](https://app.gatectr.com/sign-up) | [Lire la documentation](https://docs.gatectr.com)
+
+## Questions fréquentes
+
+### Dois-je implémenter les trois couches ?
+
+Oui. Chacune protège contre un type de risque différent. Les plafonds stricts bloquent les catastrophes. Les alertes douces permettent d'intervenir avant d'atteindre le plafond. Les limites de débit empêchent les patterns abusifs même quand le budget n'est pas encore atteint. Omettre une couche laisse une surface d'exposition non couverte.
+
+### Que se passe-t-il quand un plafond est atteint en production ?
+
+Votre code reçoit une exception (ou un code d'erreur HTTP 429 via le gateway). Vous devez prévoir ce cas dans votre gestion d'erreurs : informer l'utilisateur proprement, logger l'événement, et potentiellement déclencher une alerte. Ne laissez pas l'erreur remonter silencieusement.
+
+### Les plafonds OpenAI au niveau du compte sont-ils suffisants ?
+
+Non. Les plafonds OpenAI sont des limites de dépense mensuelle au niveau du compte entier. Ils ne permettent pas de distinguer les projets, les utilisateurs ou les agents. Pour un contrôle granulaire, vous avez besoin d'une couche applicative ou d'un gateway.

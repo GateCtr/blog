@@ -1,0 +1,157 @@
+---
+slug: llm-model-routing-explained
+title: "Le routage de modèles LLM expliqué : envoyez chaque tâche au bon modèle"
+excerpt: Le routage LLM réduit les coûts de 30 à 50 % en associant chaque requête au modèle le moins cher capable de la traiter. Voici comment ça fonctionne.
+author: GateCtr Team
+date: "2026-03-12"
+category: Routage de modèles
+readTime: 8
+---
+
+L'écart de prix entre les modèles LLM n'est pas de 2x ou 3x. Il est de 30 à 100x selon les tiers. GPT-4o mini coûte 0,15 $ par million de tokens en entrée. GPT-4o coûte 5 $. o1 coûte 15 $.
+
+Si vous envoyez toutes vos requêtes à GPT-4o, vous payez le tarif premium pour 100 % de votre trafic — même pour les tâches simples qu'un modèle 33 fois moins cher traiterait avec la même qualité.
+
+Le routage de modèles résout ce problème en associant chaque requête au modèle le moins cher capable de la traiter correctement.
+
+## Comment fonctionne le routage
+
+À son niveau le plus simple, le routage est une table de correspondance : type de tâche → modèle.
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="votre-clé-gatectr",
+    base_url="https://api.gatectr.com/v1"
+)
+
+ROUTAGE = {
+    "classification":    "gpt-4o-mini",
+    "extraction":        "gpt-4o-mini",
+    "resume_court":      "gpt-4o-mini",
+    "generation_code":   "anthropic/claude-3-7-sonnet",
+    "raisonnement":      "openai/o3-mini",
+    "analyse_longue":    "anthropic/claude-3-7-sonnet",
+    "defaut":            "gpt-4o",
+}
+
+def appeler_llm(type_tache: str, messages: list[dict]) -> str:
+    modele = ROUTAGE.get(type_tache, ROUTAGE["defaut"])
+    response = client.chat.completions.create(
+        model=modele,
+        messages=messages
+    )
+    return response.choices[0].message.content
+```
+
+Avec cette configuration de base, vous payez 0,15 $/M tokens pour les classifications et extractions, au lieu de 5 $/M. Sur 40 % du trafic typique, c'est une réduction de 97 % sur cette portion.
+
+## Les quatre niveaux de routage
+
+### Niveau 1 : Routage statique par type de tâche
+
+La méthode la plus simple et la plus fiable. Vous définissez explicitement quel modèle traite quel type de requête. Zéro latence ajoutée, maintenance minimale.
+
+**Idéal pour :** les applications avec des types de tâches bien définis connus à l'avance.
+
+### Niveau 2 : Routage par longueur de prompt
+
+Route selon le nombre de tokens en entrée. Les prompts courts vont aux modèles bon marché ; les longs aux modèles plus capables.
+
+```python
+import tiktoken
+
+def router_par_longueur(messages: list[dict]) -> str:
+    enc = tiktoken.encoding_for_model("gpt-4o")
+    total = sum(len(enc.encode(m.get("content", ""))) for m in messages)
+    
+    if total < 500:
+        return "gpt-4o-mini"
+    elif total < 3000:
+        return "gpt-4o"
+    else:
+        return "anthropic/claude-3-7-sonnet"
+```
+
+**Idéal pour :** le traitement de documents où la longueur est un bon indicateur de complexité.
+
+### Niveau 3 : Routage en cascade
+
+Essaie le modèle le moins cher en premier. Si la réponse ne passe pas la validation, réessaie avec un modèle plus puissant. La majorité des requêtes se résolvent au premier essai.
+
+```python
+NIVEAUX = ["gpt-4o-mini", "gpt-4o", "anthropic/claude-3-7-sonnet"]
+
+def appel_cascade(messages: list[dict], type_tache: str) -> str:
+    for modele in NIVEAUX:
+        response = client.chat.completions.create(
+            model=modele,
+            messages=messages,
+            temperature=0
+        )
+        texte = response.choices[0].message.content
+        if valider_reponse(texte, type_tache):
+            return texte
+    raise RuntimeError("Tous les niveaux ont échoué à la validation")
+
+def valider_reponse(texte: str, type_tache: str) -> bool:
+    if type_tache == "classification":
+        return texte.strip().lower() in {"facturation", "technique", "general"}
+    if type_tache == "json":
+        try:
+            import json; json.loads(texte); return True
+        except ValueError:
+            return False
+    return len(texte.strip()) > 10
+```
+
+**Idéal pour :** les tâches à sortie structurée où la validation est simple à définir.
+
+### Niveau 4 : Routage multi-fournisseurs
+
+Distribue les requêtes entre OpenAI et Anthropic selon le type de tâche et la disponibilité. Résilience maximale, coût optimisé par fournisseur.
+
+```python
+ROUTAGE_FOURNISSEUR = {
+    "generation_code":  "anthropic/claude-3-7-sonnet",  # Meilleur sur le code
+    "raisonnement":     "openai/o3-mini",               # Meilleur sur la logique
+    "classification":   "openai/gpt-4o-mini",           # Moins cher pour le volume
+    "longue_analyse":   "anthropic/claude-3-7-sonnet",  # 200K contexte
+}
+```
+
+## L'impact financier concret
+
+Supposons une application avec 1 million de requêtes par mois réparties ainsi :
+
+| Type de tâche | Part | Volume | Modèle avant | Modèle après | Économies |
+|---------------|------|---------|-------------|--------------|-----------|
+| Classification | 45 % | 450 000 | GPT-4o ($5/M) | GPT-4o mini ($0,15/M) | −97 % |
+| Code génération | 20 % | 200 000 | GPT-4o ($5/M) | Claude Sonnet ($3/M) | −40 % |
+| Raisonnement | 15 % | 150 000 | GPT-4o ($5/M) | o3-mini ($1,10/M) | −78 % |
+| Requêtes générales | 20 % | 200 000 | GPT-4o ($5/M) | GPT-4o ($5/M) | 0 % |
+
+En supposant 500 tokens d'entrée en moyenne, le coût mensuel passe de **2 500 $** à environ **450 $** — une réduction de 82 %.
+
+## Pourquoi le routage automatique surpasse le routage manuel
+
+Chaque stratégie décrite ci-dessus nécessite une maintenance continue : les tarifs des fournisseurs changent tous les trimestres, de nouveaux petits modèles émergent, vos politiques de routage vieillissent.
+
+Le routeur de modèles GateCtr applique le routage automatiquement sur chaque requête. Vous définissez des politiques — par type de tâche, par seuil de tokens, par fournisseur — et le routeur s'occupe du reste, y compris de rester à jour avec les tarifs et les capacités.
+
+[Lire la documentation](https://docs.gatectr.com) pour la configuration du routeur. [Commencer gratuitement →](https://app.gatectr.com/sign-up)
+
+## Questions fréquentes
+
+### Comment mesurer si le routage fonctionne ?
+
+Suivez le coût moyen par requête avant et après l'activation du routage. Suivez également votre métrique de qualité (ce que vous définissez comme une sortie réussie) par niveau de modèle. Une baisse de 30 % du coût moyen sans dégradation du taux de succès est un signal fort que le routage est efficace.
+
+### Le routage ajoute-t-il de la latence ?
+
+Le routage statique n'en ajoute aucune — c'est une recherche dans un dictionnaire avant l'appel API. Le routage en cascade ajoute de la latence quand une escalade se produit, typiquement un aller-retour supplémentaire (1 à 3 secondes). Pour le chat en temps réel, le routage statique ou par longueur est le bon choix.
+
+### Puis-je combiner plusieurs stratégies ?
+
+Oui. En pratique, la plupart des systèmes en production combinent le routage statique par type de tâche (signal principal) avec le routage par longueur en fallback pour les requêtes non classifiées, et le routage en cascade pour les tâches à sortie structurée.

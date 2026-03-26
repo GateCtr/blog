@@ -1,0 +1,169 @@
+---
+slug: choosing-between-llm-providers
+title: "OpenAI vs Anthropic vs Google : comment choisir le bon fournisseur LLM"
+excerpt: OpenAI, Anthropic et Google ont chacun des atouts distincts. Voici un cadre pour choisir — et comment utiliser les trois sans complexité supplémentaire.
+author: GateCtr Team
+date: "2026-02-24"
+category: Infrastructure IA
+readTime: 8
+---
+
+La question "quel fournisseur LLM choisir ?" est posée au mauvais moment. Elle suppose qu'il faut en choisir un seul, ce qui n'est plus la bonne façon de penser le problème en 2026. Les trois principaux fournisseurs — OpenAI, Anthropic et Google — ont des forces distinctes sur des types de tâches distincts. La stratégie optimale n'est pas de choisir le meilleur : c'est d'utiliser chacun là où il excelle.
+
+Ce guide vous aide à faire l'analyse, à construire une décision rationnelle, et à implémenter une architecture multi-fournisseurs sans complexité supplémentaire.
+
+## Vue d'ensemble des trois fournisseurs
+
+### OpenAI
+
+**Points forts :** Raisonnement (o1, o3-mini), génération générale (GPT-4o), et l'écosystème d'outils le plus riche. La référence en termes de fiabilité API et de documentation.
+
+**Modèles clés :**
+- `gpt-4o` : usage général, multimodal
+- `gpt-4o-mini` : tâches simples à haute volumétrie, 33x moins cher que GPT-4o
+- `o3-mini` : raisonnement structuré à coût maîtrisé
+- `o1` : raisonnement complexe, mathématiques, logique
+
+**Idéal pour :** raisonnement multi-étapes, applications nécessitant l'écosystème d'outils OpenAI, classification et extraction à haute volumétrie (via GPT-4o mini).
+
+### Anthropic
+
+**Points forts :** Génération de code (Claude Sonnet surpasse régulièrement GPT-4o sur les benchmarks de code), fenêtres de contexte longues (200K tokens natifs), et une qualité d'écriture longue remarquable.
+
+**Modèles clés :**
+- `claude-opus-4` : tâches les plus complexes, longue analyse
+- `claude-3-7-sonnet` : meilleur rapport qualité/prix pour le code
+- `claude-3-5-haiku` : tâches légères avec qualité supérieure à GPT-4o mini
+
+**Idéal pour :** génération et revue de code, analyse de documents longs (contrats, rapports), tâches d'écriture longue.
+
+### Google
+
+**Points forts :** Intégration native avec l'écosystème Google (Workspace, BigQuery, etc.), prix compétitifs sur les modèles flash, et des fenêtres de contexte très longues sur Gemini Pro.
+
+**Modèles clés :**
+- `gemini-2.0-pro` : usage général concurrent de GPT-4o
+- `gemini-2.0-flash` : le modèle le moins cher du marché sur ce tier
+- `gemini-2.0-flash-thinking` : raisonnement à prix réduit
+
+**Idéal pour :** workloads à très haute volumétrie où le coût est prioritaire, intégrations Google Workspace, traitement de documents multimodaux.
+
+## Cadre de décision par type de tâche
+
+| Type de tâche | Recommandation | Justification |
+|---------------|----------------|---------------|
+| Classification / extraction | GPT-4o mini | Moins cher, qualité équivalente |
+| Génération de code | Claude Sonnet 3.7 | Meilleurs benchmarks code |
+| Raisonnement / logique | OpenAI o3-mini | Optimisé pour la chaîne de réflexion |
+| Analyse de document long | Claude Sonnet | 200K contexte natif |
+| Très haute volumétrie | Gemini Flash | Prix le plus bas du marché |
+| Usage général | GPT-4o | Équilibre qualité/prix/fiabilité |
+
+## Évaluation de la qualité : ce qui compte vraiment
+
+Avant de prendre une décision définitive sur un type de tâche, évaluez avec vos données réelles :
+
+```python
+import json
+from openai import OpenAI
+
+CLIENTS = {
+    "openai":    OpenAI(api_key="sk-openai"),
+    "anthropic": OpenAI(
+        api_key="sk-ant",
+        base_url="https://api.anthropic.com/v1"
+    ),
+}
+
+MODELES_TEST = [
+    ("openai",    "gpt-4o"),
+    ("openai",    "gpt-4o-mini"),
+    ("anthropic", "claude-3-7-sonnet-20250219"),
+]
+
+def evaluer_modeles(
+    echantillons: list[dict],
+    prompt_systeme: str,
+    fn_evaluer: callable
+) -> list[dict]:
+    resultats = []
+    
+    for fournisseur, modele in MODELES_TEST:
+        client = CLIENTS[fournisseur]
+        scores = []
+        couts = []
+        
+        for exemple in echantillons:
+            response = client.chat.completions.create(
+                model=modele,
+                messages=[
+                    {"role": "system", "content": prompt_systeme},
+                    {"role": "user",   "content": exemple["entree"]}
+                ],
+                temperature=0
+            )
+            sortie = response.choices[0].message.content
+            score = fn_evaluer(sortie, exemple["sortie_attendue"])
+            scores.append(score)
+            
+            # Calcul du coût approximatif
+            usage = response.usage
+            couts.append(usage.prompt_tokens * 0.000005 + usage.completion_tokens * 0.000015)
+        
+        resultats.append({
+            "modele":       modele,
+            "fournisseur":  fournisseur,
+            "score_moyen":  round(sum(scores) / len(scores), 3),
+            "cout_moyen":   round(sum(couts) / len(couts), 6),
+        })
+    
+    return sorted(resultats, key=lambda r: (-r["score_moyen"], r["cout_moyen"]))
+```
+
+## L'architecture multi-fournisseurs
+
+Une fois l'évaluation faite, l'implémentation est simple avec un gateway qui unifie les fournisseurs :
+
+```python
+from openai import OpenAI
+
+# Un seul client, tous les fournisseurs via GateCtr
+client = OpenAI(
+    api_key="votre-clé-gatectr",
+    base_url="https://api.gatectr.com/v1"
+)
+
+ROUTAGE = {
+    "classification":  "openai/gpt-4o-mini",
+    "code":            "anthropic/claude-3-7-sonnet",
+    "raisonnement":    "openai/o3-mini",
+    "volume_eleve":    "google/gemini-2.0-flash",
+    "defaut":          "openai/gpt-4o",
+}
+
+def appel_multi_fournisseur(type_tache: str, messages: list[dict]) -> str:
+    modele = ROUTAGE.get(type_tache, ROUTAGE["defaut"])
+    response = client.chat.completions.create(
+        model=modele,
+        messages=messages
+    )
+    return response.choices[0].message.content
+```
+
+Un seul client. Une seule facture. Un seul tableau de bord de coûts.
+
+[Commencer gratuitement →](https://app.gatectr.com/sign-up) | [Lire la documentation](https://docs.gatectr.com)
+
+## Questions fréquentes
+
+### Faut-il vraiment utiliser plusieurs fournisseurs ?
+
+Non, si votre workload est homogène et bien couvert par un seul fournisseur. Un produit de génération de code qui utilise exclusivement Claude Sonnet fait un choix rationnel. La multi-fournisseur apporte un bénéfice réel quand vous avez des types de tâches hétérogènes — classification, code, raisonnement — pour lesquels les modèles optimaux sont différents.
+
+### Comment gérer la cohérence des réponses entre fournisseurs ?
+
+Les modèles ont des personnalités d'écriture différentes. Pour les applications où la cohérence stylistique est importante, testez avec des prompts système identiques sur les deux fournisseurs et ajustez jusqu'à obtenir une sortie homogène. Pour les tâches structurées (JSON, classification), la cohérence est rarement un problème.
+
+### Est-ce que changer de fournisseur casse mon code ?
+
+Avec une API compatible OpenAI (comme celle qu'expose GateCtr), la réponse est non. Le format de requête et de réponse est identique. Vous changez uniquement la valeur du champ `model` — le reste de votre code ne change pas.

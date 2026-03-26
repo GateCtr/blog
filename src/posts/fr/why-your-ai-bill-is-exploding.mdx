@@ -1,0 +1,196 @@
+---
+slug: why-your-ai-bill-is-exploding
+title: Pourquoi votre facture IA explose (et comment y remédier)
+excerpt: Facture OpenAI qui grimpe sans prévenir ? Ces cinq causes expliquent la plupart des dérapages de coûts LLM — avec une correction concrète pour chacune.
+author: GateCtr Team
+date: "2026-03-10"
+category: Optimisation des coûts
+readTime: 7
+---
+
+Un mardi matin, le responsable technique d'une startup ouvre son dashboard OpenAI pour vérifier une nouvelle feature d'agent déployée la semaine précédente. La facture d'une seule journée affiche 12 400 $. Leur budget mensuel était de 8 000 $. Au moment où ils ont trouvé le bug — un agent qui relançait des requêtes en échec sans limite de backoff — la semaine était presque terminée.
+
+Ce type d'incident n'est pas rare. Il existe, sous diverses formes, parmi les récits de production IA les plus fréquents. La bonne nouvelle : chaque version de cette histoire a un nombre fini de causes profondes, et chacune a une correction concrète.
+
+Voici les cinq raisons pour lesquelles les factures IA explosent, et exactement ce qu'il faut faire pour chacune.
+
+## Raison 1 : Des agents en boucle sans plafond strict
+
+Un agent qui rencontre une erreur ne s'arrête pas — il réessaie. Si la logique de retry n'a pas de limite, et que la condition d'erreur est persistante (mauvaise clé API, service en panne, outil mal configuré), l'agent va boucler indéfiniment en faisant des appels API jusqu'à ce que quelque chose d'externe l'arrête.
+
+Sans plafond budgétaire strict, "quelque chose d'externe" c'est vous qui vous réveillez et vérifiez le dashboard.
+
+**La correction : implémenter un plafond strict qui bloque les requêtes dès qu'il est atteint.**
+
+```python
+PLAFOND_QUOTIDIEN_USD = 200.00
+
+async def appel_avec_budget(agent_id: str, messages: list[dict]) -> str:
+    from openai import OpenAI
+    
+    depense_courante = await db.get_depense_quotidienne(agent_id)
+    
+    if depense_courante >= PLAFOND_QUOTIDIEN_USD:
+        raise RuntimeError(
+            f"L'agent {agent_id} a atteint son plafond quotidien "
+            f"(${PLAFOND_QUOTIDIEN_USD}). Requête bloquée. Reset à minuit UTC."
+        )
+    
+    client = OpenAI()
+    response = client.chat.completions.create(
+        model="gpt-4o-mini", messages=messages
+    )
+    
+    cout = estimer_cout(response.usage, "gpt-4o-mini")
+    await db.incrementer_depense_quotidienne(agent_id, cout)
+    
+    return response.choices[0].message.content
+
+def estimer_cout(usage, modele: str) -> float:
+    tarifs = {"gpt-4o-mini": (0.00015, 0.0006), "gpt-4o": (0.005, 0.015)}
+    t_e, t_s = tarifs.get(modele, (0.005, 0.015))
+    return (usage.prompt_tokens * t_e + usage.completion_tokens * t_s) / 1000
+```
+
+Configurez également le plafond au niveau infrastructure (gateway ou compte fournisseur). Si un bug contourne votre vérification applicative, le plafond infrastructure est le filet de sécurité.
+
+## Raison 2 : L'accumulation de contexte
+
+Les prompts grossissent. Un prompt système qui démarrait à 200 tokens après six mois d'itérations en contient souvent 2 000+. L'historique de conversation est encore pire. Une application qui envoie l'historique complet sur chaque requête paie linéairement avec le nombre de tours.
+
+**La correction : auditer et réduire.**
+
+```python
+import tiktoken
+
+def auditer_couts_contexte(messages: list[dict], modele: str = "gpt-4o") -> None:
+    enc = tiktoken.encoding_for_model(modele)
+    tarifs = {"gpt-4o": 5.0, "gpt-4o-mini": 0.15}
+    tarif = tarifs.get(modele, 5.0)
+    
+    print(f"\n{'Rôle':<12} {'Tokens':>8} {'Coût/req':>12}")
+    print("-" * 36)
+    
+    total = 0
+    for msg in messages:
+        tokens = len(enc.encode(msg.get("content", "")))
+        cout = tokens * tarif / 1_000_000
+        print(f"{msg['role']:<12} {tokens:>8,} {'$'+f'{cout:.5f}':>12}")
+        total += tokens
+    
+    cout_total = total * tarif / 1_000_000
+    print(f"\nTotal : {total:,} tokens → ${cout_total:.4f} par requête")
+    print(f"À 100 000 requêtes/jour : ${cout_total * 100_000:.0f}/jour")
+```
+
+Ensuite, implémenter un historique glissant (conserver uniquement les 4 à 6 derniers échanges) et réduire le prompt système de façon agressive.
+
+## Raison 3 : GPT-4o pour tout
+
+La stratégie de sélection de modèle par défaut de la plupart des équipes : utiliser GPT-4o. C'est le plus capable, donc c'est le choix sûr. Le problème : c'est aussi le plus cher — 33x plus cher que GPT-4o mini sur les tokens d'entrée.
+
+Pour les tâches de classification, extraction d'entités, détection d'intention, formatage JSON et résumé court, GPT-4o mini produit une sortie indiscernable de GPT-4o. L'utiliser coûte 97 % moins cher.
+
+**La correction : auditer vos types de requêtes et router en conséquence.**
+
+```python
+# Avant : 5,00 $/M tokens d'entrée pour toutes les requêtes
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": "Classifiez en : facturation, technique, ou général."},
+        {"role": "user",   "content": texte_ticket}
+    ]
+)
+
+# Après : 0,15 $/M tokens d'entrée — 97 % moins cher, même précision
+response = client.chat.completions.create(
+    model="gpt-4o-mini",  # C'est le seul changement
+    messages=[
+        {"role": "system", "content": "Classifiez en : facturation, technique, ou général."},
+        {"role": "user",   "content": texte_ticket}
+    ]
+)
+```
+
+Évaluez avec 200 exemples réels avant de déployer.
+
+---
+
+**Vous dépensez déjà plus de 2 000 $/mois en LLMs ?** [Commencer gratuitement →](https://app.gatectr.com/sign-up) — Le routeur de modèles GateCtr applique le routage automatiquement, sans modification de code.
+
+---
+
+## Raison 4 : Aucune visibilité par requête
+
+Les dashboards mensuels vous donnent un chiffre total. Ils ne vous disent pas quelle feature ou quel endpoint en est responsable, si le coût par requête est en hausse, ou quel utilisateur a déclenché un pic à 3 h du matin.
+
+**La correction : loguer les métadonnées de coût sur chaque appel LLM.**
+
+```python
+import logging, time
+
+logger = logging.getLogger("couts_llm")
+
+def appel_instrumente(
+    messages: list[dict],
+    modele: str,
+    endpoint: str,
+    utilisateur_id: str | None = None
+) -> str:
+    from openai import OpenAI
+    client = OpenAI()
+    
+    debut = time.monotonic()
+    response = client.chat.completions.create(model=modele, messages=messages)
+    latence_ms = (time.monotonic() - debut) * 1000
+    
+    usage = response.usage
+    tarifs = {"gpt-4o": (5.0, 15.0), "gpt-4o-mini": (0.15, 0.60)}
+    t_e, t_s = tarifs.get(modele, (5.0, 15.0))
+    cout = (usage.prompt_tokens * t_e + usage.completion_tokens * t_s) / 1_000_000
+    
+    logger.info("requete_llm", extra={
+        "endpoint":       endpoint,
+        "modele":         modele,
+        "utilisateur_id": utilisateur_id,
+        "tokens_entree":  usage.prompt_tokens,
+        "tokens_sortie":  usage.completion_tokens,
+        "cout_usd":       round(cout, 6),
+        "latence_ms":     round(latence_ms, 1),
+    })
+    
+    return response.choices[0].message.content
+```
+
+## Raison 5 : Des changements de prix fournisseur que vous n'avez pas vus
+
+OpenAI a changé ses prix plusieurs fois. Anthropic aussi. Google aussi. Si vous n'avez pas revu vos hypothèses de coût dans les trois derniers mois, votre modèle de coûts est peut-être basé sur des chiffres obsolètes.
+
+**La correction : planifier une revue trimestrielle des tarifs.**
+
+## Que faire maintenant
+
+Si votre facture IA est déjà au-dessus de vos prévisions, voici la liste d'actions immédiates :
+
+1. **Définir une limite de dépense** dans le dashboard OpenAI (Paramètres → Facturation → Limites d'usage).
+2. **Exécuter le script d'audit de contexte** ci-dessus sur une vraie requête de production. Connaître votre ventilation de tokens par requête avant tout autre changement.
+3. **Passer les endpoints de classification et d'extraction à GPT-4o mini** cette semaine. Valider sur 50 exemples réels d'abord.
+4. **Ajouter le logging de coûts** sur chaque appel LLM. Vous ne pouvez pas optimiser ce que vous ne mesurez pas.
+5. **Mettre en place un rapport hebdomadaire coût-par-endpoint.** Construire une fois, faire tourner indéfiniment.
+
+[Lire la documentation](https://docs.gatectr.com) pour le pare-feu budgétaire et l'optimiseur de contexte GateCtr.
+
+## Questions fréquentes
+
+### Comment définir un plafond budgétaire strict sur OpenAI ?
+
+OpenAI propose des limites mensuelles et des notifications au niveau du compte dans Paramètres → Facturation → Limites d'usage. Ces limites sont à l'échelle du compte, pas par projet ou par utilisateur. Pour des limites granulaires par projet ou par utilisateur, il faut les implémenter dans le code applicatif ou utiliser un gateway qui les impose au niveau infrastructure.
+
+### Qu'est-ce qui a causé mon pic de facture ?
+
+Les causes les plus fréquentes, par ordre de fréquence : (1) une boucle d'agent ou une tempête de retries — vérifiez votre volume de requêtes par heure dans le dashboard OpenAI ; (2) une nouvelle feature qui utilise un modèle plus cher qu'attendu ; (3) une fenêtre de contexte qui a grossi significativement — vérifiez les tokens d'entrée moyens par requête sur les 30 derniers jours.
+
+### Combien de temps pour corriger ?
+
+Les gains immédiats — passer les tâches simples à GPT-4o mini et définir une limite de dépense — prennent moins d'une heure. Les corrections structurelles plus larges (audit du contexte, logging par requête, politiques de routage) prennent quelques jours à implémenter et valider. Un gateway qui automatise tout cela prend moins d'une heure à mettre en place et commence à économiser dès la première requête.

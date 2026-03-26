@@ -1,6 +1,8 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MDXProvider } from '@mdx-js/react';
 import { getPostBySlug, getPosts } from '../lib/posts';
+import { useLang } from '../context/LangContext';
+import { useTranslations } from '../lib/i18n';
 import SEO from '../components/SEO';
 import styles from './PostPage.module.css';
 import 'highlight.js/styles/github-dark.css';
@@ -10,19 +12,21 @@ const BASE_URL = 'https://blog.gatectr.com';
 export default function PostPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const post = slug ? getPostBySlug(slug) : undefined;
+  const { lang } = useLang();
+  const tr = useTranslations(lang);
+  const post = slug ? getPostBySlug(slug, lang) : undefined;
 
   if (!post) {
     return (
       <div className={styles.notFound}>
-        <h2>Post not found</h2>
-        <Link to="/" className={styles.back}>← Back to home</Link>
+        <h2>{tr.post.notFound}</h2>
+        <Link to="/" className={styles.back}>{tr.post.backHome}</Link>
       </div>
     );
   }
 
   const { Component } = post;
-  const otherPosts = getPosts().filter(p => p.slug !== post.slug).slice(0, 3);
+  const otherPosts = getPosts(lang).filter(p => p.slug !== post.slug).slice(0, 3);
   const canonicalPath = `/post/${post.slug}`;
   const postUrl = `${BASE_URL}${canonicalPath}`;
 
@@ -33,22 +37,11 @@ export default function PostPage() {
     description: post.excerpt,
     url: postUrl,
     datePublished: post.date,
-    author: {
-      '@type': 'Person',
-      name: post.author,
-    },
-    publisher: {
-      '@type': 'Organization',
-      name: 'GateCtr',
-      url: 'https://gatectr.com',
-    },
+    author: { '@type': 'Person', name: post.author },
+    publisher: { '@type': 'Organization', name: 'GateCtr', url: 'https://gatectr.com' },
     articleSection: post.category,
     timeRequired: `PT${post.readTime}M`,
-    isPartOf: {
-      '@type': 'Blog',
-      name: 'GateCtr Blog',
-      url: BASE_URL,
-    },
+    isPartOf: { '@type': 'Blog', name: 'GateCtr Blog', url: BASE_URL },
   };
 
   return (
@@ -68,7 +61,7 @@ export default function PostPage() {
 
       <div className={styles.container}>
         <button onClick={() => navigate(-1)} className={styles.backBtn}>
-          ← Back
+          {tr.post.back}
         </button>
 
         <article className={styles.article}>
@@ -76,9 +69,9 @@ export default function PostPage() {
             <div className={styles.meta}>
               <span className={styles.category}>{post.category}</span>
               <span className={styles.dot}>·</span>
-              <time dateTime={post.date}>{formatDate(post.date)}</time>
+              <time dateTime={post.date}>{formatDate(post.date, tr.dateLocale)}</time>
               <span className={styles.dot}>·</span>
-              <span>{post.readTime} min read</span>
+              <span>{post.readTime} {tr.post.minRead}</span>
             </div>
             <h1 className={styles.title}>{post.title}</h1>
             <p className={styles.excerpt}>{post.excerpt}</p>
@@ -98,24 +91,24 @@ export default function PostPage() {
 
           <div className={styles.ctaBox}>
             <div className={styles.ctaBoxText}>
-              <div className={styles.ctaBoxTitle}>Cut your LLM costs by 40%</div>
-              <div className={styles.ctaBoxSub}>One endpoint swap. No code changes required.</div>
+              <div className={styles.ctaBoxTitle}>{tr.post.ctaTitle}</div>
+              <div className={styles.ctaBoxSub}>{tr.post.ctaSub}</div>
             </div>
             <a href="https://app.gatectr.com/sign-up" className={styles.ctaBoxBtn} target="_blank" rel="noopener noreferrer">
-              Start free →
+              {tr.post.ctaBtn}
             </a>
           </div>
         </article>
 
         {otherPosts.length > 0 && (
           <section className={styles.more}>
-            <h3 className={styles.moreTitle}>More Articles</h3>
+            <h3 className={styles.moreTitle}>{tr.post.moreArticles}</h3>
             <div className={styles.moreGrid}>
               {otherPosts.map(p => (
                 <Link key={p.slug} to={`/post/${p.slug}`} className={styles.moreCard}>
                   <span className={styles.moreCategory}>{p.category}</span>
                   <span className={styles.morePostTitle}>{p.title}</span>
-                  <span className={styles.moreReadTime}>{p.readTime} min read</span>
+                  <span className={styles.moreReadTime}>{p.readTime} {tr.post.minRead}</span>
                 </Link>
               ))}
             </div>
@@ -126,7 +119,7 @@ export default function PostPage() {
   );
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, locale: string): string {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  return date.toLocaleDateString(locale, { month: 'long', day: 'numeric', year: 'numeric' });
 }

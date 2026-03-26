@@ -1,0 +1,153 @@
+import type { Lang } from '../context/LangContext';
+
+export const t = {
+  en: {
+    nav: {
+      home: 'Home',
+      docs: 'Docs',
+      about: 'About',
+      signIn: 'Sign in',
+      startFree: 'Start free',
+      toggleMenu: 'Toggle menu',
+    },
+    hero: {
+      badge: 'Cost · Routing · Infrastructure',
+      title: 'Stop wasting money on AI.',
+      sub: 'Guides, benchmarks, and strategies to optimize and scale your LLM usage.',
+      ctaPrimary: 'Start using GateCtr →',
+      ctaSecondary: 'View docs →',
+      searchPlaceholder: 'Search articles...',
+    },
+    sidebar: {
+      topics: 'Topics',
+      allPosts: 'All Posts',
+      ctaTitle: 'Cut LLM costs by 40%',
+      ctaText: 'One endpoint swap. Full control over tokens, budgets, and routing.',
+      ctaBtn: 'Start free →',
+    },
+    feed: {
+      empty: 'No articles found. Try a different search or topic.',
+    },
+    card: {
+      readMore: 'Read more →',
+      minRead: 'min read',
+    },
+    post: {
+      back: '← Back',
+      notFound: 'Post not found',
+      backHome: '← Back to home',
+      minRead: 'min read',
+      moreArticles: 'More Articles',
+      ctaTitle: 'Cut your LLM costs by 40%',
+      ctaSub: 'One endpoint swap. No code changes required.',
+      ctaBtn: 'Start free →',
+    },
+    about: {
+      title: 'About GateCtr Blog',
+      subtitle: 'Practical writing on LLM cost optimization, AI infrastructure, and model routing — for engineering teams building with AI.',
+      whatWeWriteTitle: 'What We Write About',
+      whatWeWrite1: 'GateCtr Blog covers the operational side of running LLMs in production — the topics that matter when you move from prototype to scale. Context optimization, model routing, budget controls, observability, and provider selection.',
+      whatWeWrite2: 'Every article is written for engineers and technical leads who are responsible for LLM infrastructure and want to reduce costs without sacrificing output quality.',
+      aboutGateTitle: 'About GateCtr',
+      aboutGate1: 'GateCtr is an LLM gateway that sits between your application and model providers. One endpoint swap gives you full control over tokens, budgets, and routing — without changing a line of your application code.',
+      aboutGate2: 'Teams using GateCtr typically reduce their LLM spend by 40% in the first week, through context optimization and intelligent model routing.',
+      threeTitle: 'The Three Products',
+      three1: ' — the main product site with pricing, features, and access requests.',
+      three2: ' — the app and authentication space. Sign in at ',
+      three2b: ' to manage routing rules, budget limits, and usage analytics.',
+      three3: ' — integration guides, API reference, and configuration documentation.',
+      ctaTitle: 'Cut LLM costs by 40%',
+      ctaText: 'One endpoint swap. Full control over tokens, budgets, and routing.',
+      ctaBtn: 'Request access →',
+    },
+    footer: {
+      home: 'Home',
+      signIn: 'Sign in',
+      docs: 'Docs',
+      copy: `© ${new Date().getFullYear()} GateCtr. Cut LLM costs by 40%.`,
+    },
+    seo: {
+      homeTitle: 'The GateCtr Blog',
+      homeDesc: 'Guides, benchmarks, and strategies to optimize and scale your LLM usage. Cut AI costs, master model routing, and build smarter systems.',
+      aboutDesc: 'GateCtr Blog covers the operational side of running LLMs in production — context optimization, model routing, budget controls, observability, and provider selection.',
+    },
+    dateLocale: 'en-US',
+  },
+
+  fr: {
+    nav: {
+      home: "Accueil",
+      docs: "Docs",
+      about: "À propos",
+      signIn: "Connexion",
+      startFree: "Commencer gratuitement",
+      toggleMenu: "Menu",
+    },
+    hero: {
+      badge: "Coût · Routage · Infrastructure",
+      title: "Arrêtez de gaspiller de l'argent sur l'IA.",
+      sub: "Guides, benchmarks et stratégies pour optimiser et scaler l'usage des LLMs.",
+      ctaPrimary: "Utiliser GateCtr →",
+      ctaSecondary: "Voir la doc →",
+      searchPlaceholder: "Rechercher des articles...",
+    },
+    sidebar: {
+      topics: "Sujets",
+      allPosts: "Tous les articles",
+      ctaTitle: "Réduisez vos coûts LLM de 40 %",
+      ctaText: "Un seul changement d'endpoint. Contrôle total sur les tokens, budgets et le routage.",
+      ctaBtn: "Commencer gratuitement →",
+    },
+    feed: {
+      empty: "Aucun article trouvé. Essayez un autre terme ou sujet.",
+    },
+    card: {
+      readMore: "Lire la suite →",
+      minRead: "min de lecture",
+    },
+    post: {
+      back: "← Retour",
+      notFound: "Article introuvable",
+      backHome: "← Retour à l'accueil",
+      minRead: "min de lecture",
+      moreArticles: "Plus d'articles",
+      ctaTitle: "Réduisez vos coûts LLM de 40 %",
+      ctaSub: "Un seul changement d'endpoint. Aucune modification de code requise.",
+      ctaBtn: "Commencer gratuitement →",
+    },
+    about: {
+      title: "À propos du blog GateCtr",
+      subtitle: "Des articles pratiques sur l'optimisation des coûts LLM, l'infrastructure IA et le routage de modèles — pour les équipes d'ingénierie qui construisent avec l'IA.",
+      whatWeWriteTitle: "Ce que nous couvrons",
+      whatWeWrite1: "Le blog GateCtr couvre le côté opérationnel de l'utilisation des LLMs en production — les sujets qui comptent quand on passe du prototype à l'échelle. Optimisation du contexte, routage de modèles, contrôles budgétaires, observabilité et sélection de fournisseurs.",
+      whatWeWrite2: "Chaque article est écrit pour les ingénieurs et responsables techniques en charge de l'infrastructure LLM qui souhaitent réduire les coûts sans sacrifier la qualité.",
+      aboutGateTitle: "À propos de GateCtr",
+      aboutGate1: "GateCtr est une gateway LLM qui s'intercale entre votre application et les fournisseurs de modèles. Un seul changement d'endpoint vous donne un contrôle total sur les tokens, les budgets et le routage — sans modifier une ligne de votre code.",
+      aboutGate2: "Les équipes qui utilisent GateCtr réduisent généralement leurs dépenses LLM de 40 % dès la première semaine, grâce à l'optimisation du contexte et au routage intelligent des modèles.",
+      threeTitle: "Les trois produits",
+      three1: " — le site produit principal avec tarifs, fonctionnalités et accès.",
+      three2: " — l'espace app et authentification. Connectez-vous sur ",
+      three2b: " pour gérer les règles de routage, les limites de budget et les analytics.",
+      three3: " — guides d'intégration, référence API et documentation de configuration.",
+      ctaTitle: "Réduisez vos coûts LLM de 40 %",
+      ctaText: "Un seul changement d'endpoint. Contrôle total sur les tokens, budgets et le routage.",
+      ctaBtn: "Demander l'accès →",
+    },
+    footer: {
+      home: "Accueil",
+      signIn: "Connexion",
+      docs: "Docs",
+      copy: `© ${new Date().getFullYear()} GateCtr. Réduisez vos coûts LLM de 40 %.`,
+    },
+    seo: {
+      homeTitle: "Le blog GateCtr",
+      homeDesc: "Guides, benchmarks et stratégies pour optimiser et scaler l'usage des LLMs. Réduisez vos coûts IA, maîtrisez le routage de modèles et construisez des systèmes plus intelligents.",
+      aboutDesc: "Le blog GateCtr couvre le côté opérationnel de l'utilisation des LLMs en production — optimisation du contexte, routage de modèles, contrôles budgétaires, observabilité et sélection de fournisseurs.",
+    },
+    dateLocale: "fr-FR",
+  },
+} as const satisfies Record<Lang, object>;
+
+export function useTranslations(lang: Lang) {
+  return t[lang];
+}

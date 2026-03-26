@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useLang } from '../context/LangContext';
+import { useTranslations } from '../lib/i18n';
 import styles from './Header.module.css';
 
 function GateCtrLogo() {
@@ -14,6 +16,8 @@ function GateCtrLogo() {
 export default function Header() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { lang, toggle } = useLang();
+  const tr = useTranslations(lang);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -30,9 +34,7 @@ export default function Header() {
 
   useEffect(() => {
     const onResize = () => {
-      if (window.innerWidth > 768) {
-        setMenuOpen(false);
-      }
+      if (window.innerWidth > 768) setMenuOpen(false);
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
@@ -52,7 +54,7 @@ export default function Header() {
         <button
           className={styles.hamburger}
           onClick={() => setMenuOpen(o => !o)}
-          aria-label="Toggle menu"
+          aria-label={tr.nav.toggleMenu}
           aria-expanded={menuOpen}
         >
           <span className={`${styles.bar} ${menuOpen ? styles.barTop : ''}`} />
@@ -62,23 +64,32 @@ export default function Header() {
 
         <nav className={`${styles.nav} ${menuOpen ? styles.navOpen : ''}`}>
           <a href="https://gatectr.com" className={styles.navLink} target="_blank" rel="noopener noreferrer" onClick={close}>
-            Home
+            {tr.nav.home}
           </a>
           <a href="https://docs.gatectr.com" className={styles.navLink} target="_blank" rel="noopener noreferrer" onClick={close}>
-            Docs
+            {tr.nav.docs}
           </a>
           <Link
             to="/about"
             className={`${styles.navLink} ${location.pathname === '/about' ? styles.active : ''}`}
             onClick={close}
           >
-            About
+            {tr.nav.about}
           </Link>
+
+          <button
+            className={styles.langToggle}
+            onClick={() => { toggle(); close(); }}
+            aria-label={lang === 'en' ? 'Switch to French' : 'Passer en anglais'}
+          >
+            {lang === 'en' ? 'FR' : 'EN'}
+          </button>
+
           <a href="https://app.gatectr.com/sign-in" className={styles.signInBtn} target="_blank" rel="noopener noreferrer" onClick={close}>
-            Sign in
+            {tr.nav.signIn}
           </a>
           <a href="https://app.gatectr.com/sign-up" className={styles.ctaBtn} target="_blank" rel="noopener noreferrer" onClick={close}>
-            Start free
+            {tr.nav.startFree}
           </a>
         </nav>
       </div>

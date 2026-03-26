@@ -1,0 +1,212 @@
+---
+slug: understanding-llm-usage-dashboards
+title: Ce qu'un bon tableau de bord d'usage LLM vous dit vraiment
+excerpt: Les comptages de tokens seuls ne suffisent pas en observabilité LLM. Voici les six métriques essentielles et à quoi ressemble un bon logging par requête.
+author: GateCtr Team
+date: "2026-03-01"
+category: Infrastructure IA
+readTime: 7
+---
+
+Le tableau de bord OpenAI vous montre votre dépense totale et vos tokens consommés. C'est un point de départ — mais ce n'est pas de l'observabilité.
+
+Ce dont les équipes en production ont besoin, c'est de comprendre *pourquoi* leur facture est ce qu'elle est, *quel* endpoint ou feature est responsable, et *comment* les coûts évoluent dans le temps. Aucune de ces questions ne trouve réponse dans un comptage de tokens agrégé.
+
+Voici les six métriques qui comptent, et comment construire le logging qui les rend possibles.
+
+## Métrique 1 : Coût par requête par endpoint
+
+Le coût mensuel total vous dit que vous avez dépensé X euros. Le coût par requête par endpoint vous dit que votre feature de génération de rapports coûte 0,18 $ par appel pendant que votre classification coûte 0,002 $. L'une est 90 fois plus chère que l'autre — et si vous ne le savez pas, vous ne savez pas où optimiser.
+
+```python
+import logging, time
+
+logger = logging.getLogger("llm_couts")
+
+TARIFS = {
+    "gpt-4o":        (5.0,  15.0),
+    "gpt-4o-mini":   (0.15,  0.60),
+    "o3-mini":       (1.10,  4.40),
+}
+
+def appel_instrumente(
+    messages: list[dict],
+    modele: str,
+    endpoint: str,
+    utilisateur_id: str | None = None
+) -> str:
+    from openai import OpenAI
+    client = OpenAI()
+    
+    debut = time.monotonic()
+    response = client.chat.completions.create(model=modele, messages=messages)
+    latence_ms = (time.monotonic() - debut) * 1000
+    
+    usage = response.usage
+    tarif_e, tarif_s = TARIFS.get(modele, (5.0, 15.0))
+    cout = (
+        usage.prompt_tokens * tarif_e / 1_000_000 +
+        usage.completion_tokens * tarif_s / 1_000_000
+    )
+    
+    logger.info("requete_llm", extra={
+        "endpoint":        endpoint,
+        "modele":          modele,
+        "utilisateur_id":  utilisateur_id,
+        "tokens_entree":   usage.prompt_tokens,
+        "tokens_sortie":   usage.completion_tokens,
+        "cout_usd":        round(cout, 6),
+        "latence_ms":      round(latence_ms, 1),
+        "timestamp":       time.time(),
+    })
+    
+    return response.choices[0].message.content
+```
+
+## Métrique 2 : Tendance du coût par requête dans le temps
+
+Le coût par requête qui augmente progressivement est un signal d'alerte classique. Il indique généralement que les fenêtres de contexte grossissent — des instructions ajoutées au prompt système, de l'historique de conversation qui s'allonge, des documents de plus en plus longs.
+
+Un coût par requête stable ou décroissant est le signe que vos optimisations fonctionnent.
+
+```python
+import pandas as pd
+
+def analyser_tendance(logs: list[dict], endpoint: str) -> dict:
+    df = pd.DataFrame([l for l in logs if l["endpoint"] == endpoint])
+    df["date"] = pd.to_datetime(df["timestamp"], unit="s").dt.date
+    
+    tendance_semaine = (
+        df.groupby("date")["cout_usd"]
+        .mean()
+        .reset_index()
+        .rename(columns={"cout_usd": "cout_moyen"})
+    )
+    
+    variation = (
+        (tendance_semaine["cout_moyen"].iloc[-1] -
+         tendance_semaine["cout_moyen"].iloc[0]) /
+        tendance_semaine["cout_moyen"].iloc[0] * 100
+    )
+    
+    return {
+        "endpoint": endpoint,
+        "variation_7j_pct": round(variation, 1),
+        "cout_moyen_hier": round(tendance_semaine["cout_moyen"].iloc[-1], 5),
+        "alerte": variation > 20,
+    }
+```
+
+## Métrique 3 : Distribution du ratio tokens sortie/entrée
+
+Un ratio sortie/entrée élevé peut indiquer que le modèle génère des sorties inutilement longues. Un ratio très bas peut indiquer que le prompt est trop verbeux pour ce qu'il demande.
+
+| Tâche typique | Ratio sortie/entrée attendu |
+|---------------|----------------------------|
+| Classification | 0.01–0.05 |
+| Extraction JSON | 0.10–0.30 |
+| Résumé court | 0.20–0.40 |
+| Génération de code | 0.30–0.80 |
+| Analyse longue | 0.15–0.50 |
+
+Un ratio sortie/entrée plus élevé qu'attendu pour votre tâche est souvent corrigeable avec un `max_tokens` plus strict ou une reformulation du prompt.
+
+## Métrique 4 : Coût par utilisateur/session
+
+Pour les produits avec des utilisateurs distincts, le coût par utilisateur par jour révèle les patterns d'abus et les power users qui coûtent disproportionnellement.
+
+```python
+def rapport_top_utilisateurs(
+    logs: list[dict],
+    top_n: int = 10
+) -> list[dict]:
+    from collections import defaultdict
+    
+    couts_par_user: dict[str, float] = defaultdict(float)
+    requetes_par_user: dict[str, int] = defaultdict(int)
+    
+    for log in logs:
+        uid = log.get("utilisateur_id", "anonyme")
+        couts_par_user[uid] += log["cout_usd"]
+        requetes_par_user[uid] += 1
+    
+    classement = sorted(
+        couts_par_user.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )[:top_n]
+    
+    return [
+        {
+            "utilisateur_id": uid,
+            "cout_total_usd": round(cout, 4),
+            "nb_requetes": requetes_par_user[uid],
+            "cout_moyen_requete": round(cout / requetes_par_user[uid], 6),
+        }
+        for uid, cout in classement
+    ]
+```
+
+## Métrique 5 : Taux d'erreur et taux de retry
+
+Les erreurs API génèrent des coûts sans valeur produite. Les retries automatiques peuvent multiplier les coûts en cas d'erreur persistante.
+
+```python
+def calculer_taux_erreur(logs: list[dict]) -> dict:
+    total = len(logs)
+    erreurs = sum(1 for l in logs if l.get("erreur"))
+    retries = sum(1 for l in logs if l.get("est_retry"))
+    
+    return {
+        "total_requetes": total,
+        "taux_erreur_pct": round(erreurs / total * 100, 2) if total else 0,
+        "taux_retry_pct":  round(retries / total * 100, 2) if total else 0,
+        "cout_perdu_erreurs": sum(
+            l["cout_usd"] for l in logs if l.get("erreur")
+        ),
+    }
+```
+
+## Métrique 6 : Latence au percentile 95
+
+La latence médiane cache les cas extrêmes. Le p95 révèle les requêtes lentes qui dégradent l'expérience utilisateur — et souvent, elles corrèlent avec des fenêtres de contexte inhabituellement grandes.
+
+```python
+import statistics
+
+def calculer_latences(logs: list[dict]) -> dict:
+    latences = sorted(l["latence_ms"] for l in logs)
+    n = len(latences)
+    if not n:
+        return {}
+    
+    return {
+        "p50_ms":  round(latences[int(n * 0.50)], 1),
+        "p90_ms":  round(latences[int(n * 0.90)], 1),
+        "p95_ms":  round(latences[int(n * 0.95)], 1),
+        "p99_ms":  round(latences[int(n * 0.99)], 1),
+        "max_ms":  round(latences[-1], 1),
+    }
+```
+
+## L'observabilité out-of-the-box avec GateCtr
+
+Construire et maintenir ce pipeline de logging prend du temps. GateCtr fournit toutes ces métriques automatiquement sur chaque requête passant par le gateway — sans instrumentation supplémentaire de votre côté.
+
+Un tableau de bord central avec coût par endpoint, tendances temporelles, coût par utilisateur et alertes en temps réel, prêt dès la première requête.
+
+[Commencer gratuitement →](https://app.gatectr.com/sign-up) | [Lire la documentation](https://docs.gatectr.com)
+
+## Questions fréquentes
+
+### À quelle fréquence dois-je analyser ces métriques ?
+
+Le coût par requête par endpoint mérite une revue hebdomadaire. Les alertes sur les plafonds et les anomalies doivent être en temps réel. La tendance mensuelle est utile pour planifier les budgets. Une fois le pipeline en place, la plupart des métriques peuvent être surveillées passivement via des alertes plutôt qu'une revue active.
+
+### Puis-je utiliser ces métriques avec n'importe quel fournisseur LLM ?
+
+Oui, à condition d'instrumenter vos appels API pour chaque fournisseur. L'objet `usage` retourné par OpenAI, Anthropic et Google contient les comptages de tokens nécessaires au calcul du coût. Le schéma de log ci-dessus est agnostique au fournisseur.
+
+### Quelle est la surcharge de performance du logging ?
+
+Négligeable. Le logging asynchrone ajoute moins d'une milliseconde par requête. L'appel LLM lui-même prend 500 à 3 000 ms — le logging est imperceptible en comparaison.

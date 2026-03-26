@@ -1,67 +1,53 @@
+import { useLang } from '../context/LangContext';
+import { useTranslations } from '../lib/i18n';
 import SEO from '../components/SEO';
 import styles from './About.module.css';
 
 export default function About() {
+  const { lang } = useLang();
+  const tr = useTranslations(lang);
+  const ab = tr.about;
+
   return (
     <div className={styles.page}>
       <SEO
-        title="About"
-        description="GateCtr Blog covers the operational side of running LLMs in production — context optimization, model routing, budget controls, observability, and provider selection."
+        title={ab.title}
+        description={tr.seo.aboutDesc}
         canonical="/about"
       />
       <div className={styles.container}>
         <header className={styles.header}>
-          <h1 className={styles.title}>About GateCtr Blog</h1>
-          <p className={styles.subtitle}>
-            Practical writing on LLM cost optimization, AI infrastructure, and model routing — for engineering teams building with AI.
-          </p>
+          <h1 className={styles.title}>{ab.title}</h1>
+          <p className={styles.subtitle}>{ab.subtitle}</p>
         </header>
 
         <div className={styles.content}>
           <section className={styles.section}>
-            <h2>What We Write About</h2>
-            <p>
-              GateCtr Blog covers the operational side of running LLMs in production — the topics that matter
-              when you move from prototype to scale. Context optimization, model routing, budget controls,
-              observability, and provider selection.
-            </p>
-            <p>
-              Every article is written for engineers and technical leads who are responsible for LLM
-              infrastructure and want to reduce costs without sacrificing output quality.
-            </p>
+            <h2>{ab.whatWeWriteTitle}</h2>
+            <p>{ab.whatWeWrite1}</p>
+            <p>{ab.whatWeWrite2}</p>
           </section>
 
           <section className={styles.section}>
-            <h2>About GateCtr</h2>
-            <p>
-              GateCtr is an LLM gateway that sits between your application and model providers. One endpoint
-              swap gives you full control over tokens, budgets, and routing — without changing a line of your
-              application code.
-            </p>
-            <p>
-              Teams using GateCtr typically reduce their LLM spend by 40% in the first week, through
-              context optimization and intelligent model routing.
-            </p>
+            <h2>{ab.aboutGateTitle}</h2>
+            <p>{ab.aboutGate1}</p>
+            <p>{ab.aboutGate2}</p>
           </section>
 
           <section className={styles.section}>
-            <h2>The Three Products</h2>
+            <h2>{ab.threeTitle}</h2>
+            <p><strong>gatectr.com</strong>{ab.three1}</p>
             <p>
-              <strong>gatectr.com</strong> — the main product site with pricing, features, and access requests.
+              <strong>app.gatectr.com</strong>{ab.three2}<strong>app.gatectr.com/sign-in</strong>{ab.three2b}
             </p>
-            <p>
-              <strong>app.gatectr.com</strong> — the app and authentication space. Sign in at <strong>app.gatectr.com/sign-in</strong> to manage routing rules, budget limits, and usage analytics.
-            </p>
-            <p>
-              <strong>docs.gatectr.com</strong> — integration guides, API reference, and configuration documentation.
-            </p>
+            <p><strong>docs.gatectr.com</strong>{ab.three3}</p>
           </section>
 
           <div className={styles.ctaBox}>
-            <h3 className={styles.ctaTitle}>Cut LLM costs by 40%</h3>
-            <p className={styles.ctaText}>One endpoint swap. Full control over tokens, budgets, and routing.</p>
+            <h3 className={styles.ctaTitle}>{ab.ctaTitle}</h3>
+            <p className={styles.ctaText}>{ab.ctaText}</p>
             <a href="https://gatectr.com" className={styles.ctaBtn} target="_blank" rel="noopener noreferrer">
-              Request access →
+              {ab.ctaBtn}
             </a>
           </div>
         </div>

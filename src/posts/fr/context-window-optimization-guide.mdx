@@ -1,0 +1,218 @@
+---
+slug: context-window-optimization-guide
+title: Guide complet de l'optimisation de la fenêtre de contexte pour les LLMs
+excerpt: Les tokens de contexte sont le principal driver des coûts LLM. Auditez et compressez vos prompts pour réduire les dépenses d'entrée de 30 à 50 %.
+author: GateCtr Team
+date: "2026-03-17"
+category: Optimisation des coûts
+readTime: 10
+---
+
+Voici un fait que la plupart des équipes découvrent trop tard : les tokens d'entrée, et non les tokens de sortie, représentent généralement 70 à 80 % de la facture LLM totale. Et la principale source de ces tokens d'entrée n'est pas le contenu de l'utilisateur — c'est le prompt système et l'historique de conversation que vous envoyez sur chaque requête.
+
+Optimiser la fenêtre de contexte est souvent la modification à plus fort impact que vous pouvez apporter à votre infrastructure LLM, sans changer ni le modèle ni la qualité perçue.
+
+## Pourquoi les fenêtres de contexte grossissent
+
+Les prompts système commencent petits. Ils grossissent organiquement :
+
+- On ajoute une instruction pour traiter un cas limite trouvé en production
+- On ajoute quelques exemples pour améliorer la cohérence
+- On ajoute des règles défensives après un incident
+- Personne ne supprime jamais rien, car "ça pourrait casser quelque chose"
+
+Six mois plus tard, ce qui était 200 tokens en est à 2 500. Chaque requête paie ce coût, même quand 80 % du prompt ne concerne pas la tâche spécifique en cours.
+
+## Étape 1 : Auditer votre contexte actuel
+
+Avant d'optimiser, mesurez. Cet outil donne une ventilation par message de votre coût de contexte réel :
+
+```python
+import tiktoken
+
+def auditer_contexte_complet(
+    messages: list[dict],
+    modele: str = "gpt-4o"
+) -> dict:
+    enc = tiktoken.encoding_for_model(modele)
+    tarifs_entree = {
+        "gpt-4o": 5.0,
+        "gpt-4o-mini": 0.15,
+        "o3-mini": 1.10,
+    }
+    tarif = tarifs_entree.get(modele, 5.0)
+    
+    rapport = []
+    total_tokens = 0
+    
+    for i, msg in enumerate(messages):
+        contenu = msg.get("content", "")
+        tokens = len(enc.encode(contenu))
+        cout = tokens * tarif / 1_000_000
+        rapport.append({
+            "index": i,
+            "role": msg["role"],
+            "tokens": tokens,
+            "cout_par_requete": cout,
+            "apercu": contenu[:80] + "..." if len(contenu) > 80 else contenu
+        })
+        total_tokens += tokens
+    
+    return {
+        "messages": rapport,
+        "total_tokens": total_tokens,
+        "cout_par_requete": total_tokens * tarif / 1_000_000,
+        "cout_100k_requetes_jour": total_tokens * tarif / 1_000_000 * 100_000
+    }
+
+# Résultat typique avant optimisation :
+# system   : 2 847 tokens | $0.01424/req
+# user     :   312 tokens | $0.00156/req
+# Total    : 3 159 tokens | $0.01580/req → $1 580/jour à 100K req
+```
+
+## Étape 2 : Réécrire le prompt système
+
+Un prompt système typique non optimisé contient :
+
+1. Des répétitions — la même instruction formulée de trois façons différentes
+2. Des cas limites résolus — des instructions pour des problèmes qui n'existent plus
+3. Des exemples inline — qui devraient être retirés ou réduits à un
+4. Du verbiage défensif — des phrases comme "assure-toi de toujours..." qui n'apportent rien
+
+La réécriture vise à conserver la sémantique tout en réduisant les tokens :
+
+```python
+# Avant : 847 tokens
+PROMPT_AVANT = """
+Vous êtes un assistant de support client pour TechCorp. Votre rôle est d'aider 
+les clients avec leurs questions et problèmes. Vous devez toujours être poli et 
+professionnel. Vous devez toujours répondre en français. Assurez-vous de toujours 
+demander des informations supplémentaires si nécessaire. Ne donnez jamais 
+d'informations incorrectes. Si vous ne savez pas, dites-le. Classifiez toujours 
+le ticket en: facturation, technique, ou général. [... 800 tokens supplémentaires]
+"""
+
+# Après : 124 tokens
+PROMPT_APRES = """
+Support TechCorp. Répondez en français, restez factuel.
+Classification : facturation | technique | général
+Si inconnu : dites-le explicitement.
+"""
+```
+
+**Économie : 85 % sur le prompt système.**
+
+## Étape 3 : Implémenter un historique glissant
+
+Envoyer l'historique de conversation complet est le pattern le plus coûteux dans les applications de chat. Une conversation de 30 échanges à 400 tokens chacun envoie 12 000 tokens d'historique sur chaque requête.
+
+```python
+from collections import deque
+
+class GestionnaireContexte:
+    def __init__(self, max_tours: int = 6, max_tokens: int = 2000):
+        self.historique = deque()
+        self.max_tours = max_tours
+        self.max_tokens = max_tokens
+        self.enc = tiktoken.encoding_for_model("gpt-4o")
+    
+    def ajouter_tour(self, role: str, contenu: str) -> None:
+        self.historique.append({"role": role, "content": contenu})
+        self._elaguer()
+    
+    def _elaguer(self) -> None:
+        while len(self.historique) > self.max_tours * 2:
+            self.historique.popleft()
+        
+        while self._compter_tokens() > self.max_tokens and len(self.historique) > 2:
+            self.historique.popleft()
+    
+    def _compter_tokens(self) -> int:
+        return sum(
+            len(self.enc.encode(msg["content"]))
+            for msg in self.historique
+        )
+    
+    def obtenir_messages(self, prompt_systeme: str) -> list[dict]:
+        return [
+            {"role": "system", "content": prompt_systeme},
+            *list(self.historique)
+        ]
+```
+
+**Économie : 60 à 80 % sur les tokens d'historique.**
+
+## Étape 4 : Compresser les documents longs
+
+Quand les utilisateurs soumettent des documents longs, il est rarement nécessaire d'envoyer l'intégralité au modèle. Selon la tâche, des stratégies de compression peuvent réduire significativement la taille du contexte.
+
+```python
+def extraire_sections_pertinentes(
+    document: str,
+    question: str,
+    max_tokens: int = 2000
+) -> str:
+    """
+    Extrait les 2 000 tokens les plus pertinents d'un document
+    par rapport à la question posée.
+    Simple implémentation par fenêtre glissante + score de similarité lexicale.
+    """
+    enc = tiktoken.encoding_for_model("gpt-4o")
+    mots_question = set(question.lower().split())
+    
+    paragraphes = document.split('\n\n')
+    scores = []
+    for para in paragraphes:
+        mots_para = set(para.lower().split())
+        score = len(mots_question & mots_para)
+        scores.append((score, para))
+    
+    scores.sort(reverse=True)
+    
+    resultat = []
+    tokens_utilises = 0
+    for _, para in scores:
+        tokens_para = len(enc.encode(para))
+        if tokens_utilises + tokens_para <= max_tokens:
+            resultat.append(para)
+            tokens_utilises += tokens_para
+    
+    return '\n\n'.join(resultat)
+```
+
+## Étape 5 : Automatiser avec un gateway
+
+Les étapes 1 à 4 fonctionnent — mais chacune nécessite de la maintenance. L'optimiseur de contexte GateCtr applique la compression et l'élagage automatiquement sur chaque requête, en transparence pour votre code.
+
+```bash
+# Votre code ne change pas
+export OPENAI_BASE_URL="https://api.gatectr.com/v1"
+```
+
+Le gateway analyse les tokens entrants, identifie les redondances et applique la compression appropriée avant de transmettre la requête au fournisseur. Résultat moyen : 30 à 50 % de réduction des tokens d'entrée.
+
+[Commencer gratuitement →](https://app.gatectr.com/sign-up) | [Lire la documentation](https://docs.gatectr.com)
+
+## Résultats attendus par étape
+
+| Étape | Effort | Réduction tokens d'entrée |
+|-------|--------|--------------------------|
+| Réécriture du prompt système | Moyen | 30–70 % |
+| Historique glissant | Faible | 40–80 % (sur le chat) |
+| Compression des documents | Moyen | 30–60 % |
+| Gateway avec optimisation auto | Très faible | 30–50 % combiné |
+
+## Questions fréquentes
+
+### L'optimisation du contexte peut-elle dégrader la qualité ?
+
+En général, non. La suppression de tokens redondants, d'instructions répétées ou d'historique ancien améliore souvent la qualité en réduisant le bruit pour le modèle. La clé est de conserver le contenu sémantiquement dense et de supprimer le remplissage. Toujours valider avec un échantillon de production avant de déployer à grande échelle.
+
+### Dois-je optimiser si j'utilise GPT-4o mini ?
+
+Oui. À 0,15 $/M tokens, les économies en valeur absolue sont moindres — mais le ratio reste identique. Et si vous envisagez un jour de passer à un modèle plus puissant pour certaines tâches, avoir un contexte optimisé amortit considérablement le surcoût.
+
+### Quelle est la réduction de tokens moyenne que GateCtr obtient ?
+
+En production, l'optimiseur de contexte GateCtr réduit les tokens d'entrée de 30 à 50 % en moyenne sur les workloads courants. Les applications avec des prompts système verbeux ou de l'historique de conversation voient les plus grandes réductions.

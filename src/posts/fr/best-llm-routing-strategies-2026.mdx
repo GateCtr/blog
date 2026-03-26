@@ -1,0 +1,232 @@
+---
+slug: best-llm-routing-strategies-2026
+title: Les meilleures stratégies de routage LLM en 2026
+excerpt: Les stratégies de routage LLM réduisent les coûts de 50 à 100x. Cinq approches prêtes pour la production avec exemples de code et tableaux de compromis.
+author: GateCtr Team
+date: "2026-03-17"
+category: Routage de modèles
+readTime: 9
+---
+
+L'écart de coût entre les tiers LLM les moins chers et les plus chers en 2026 n'est pas de 2x ou 5x. Il est de 50 à 100 fois. GPT-4o mini coûte 0,15 $ par million de tokens d'entrée. o1 coûte 15,00 $. Si vous envoyez toutes vos requêtes à un modèle frontier, vous payez un premium de 50 à 100x sur la fraction de votre trafic qui en a réellement besoin.
+
+La solution, c'est le routage : associer chaque requête au modèle le moins cher capable de la traiter correctement. Cet article couvre les cinq stratégies de routage qui fonctionnent en production, leurs compromis, et comment choisir.
+
+## Pourquoi le routage compte plus que le choix de modèle
+
+Les équipes s'obsèdent sur le choix du modèle. La question plus impactante est : quel modèle utiliser *pour chaque type de requête*.
+
+Un trafic de production typique couvre plusieurs tiers de complexité :
+
+- 40 à 60 % des requêtes : tâches simples et structurées (classification, extraction, résumé court)
+- 25 à 35 % : tâches modérées (résumé, génération structurée, raisonnement basique)
+- 10 à 20 % : tâches complexes (génération de code, raisonnement multi-étapes, analyse nuancée)
+
+Avec un modèle frontier pour tout, vous payez le prix frontier pour 100 % du trafic. Avec le routage, vous payez des prix réduits pour 40 à 60 % du trafic.
+
+## Stratégie 1 : Routage statique par type de tâche
+
+L'approche la plus simple et la plus fiable. Vous définissez une correspondance type de tâche → modèle à la configuration, et routez chaque requête selon son type déclaré.
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="votre-clé-gatectr",
+    base_url="https://api.gatectr.com/v1"
+)
+
+CARTE_MODELES = {
+    "classification":    "gpt-4o-mini",
+    "extraction":        "gpt-4o-mini",
+    "resume_court":      "gpt-4o-mini",
+    "resume_long":       "gpt-4o",
+    "generation_code":   "anthropic/claude-3-7-sonnet",
+    "raisonnement":      "openai/o3-mini",
+    "defaut":            "gpt-4o",
+}
+
+def appeler_llm(type_tache: str, messages: list[dict]) -> str:
+    modele = CARTE_MODELES.get(type_tache, CARTE_MODELES["defaut"])
+    response = client.chat.completions.create(
+        model=modele, messages=messages
+    )
+    return response.choices[0].message.content
+```
+
+**Quand l'utiliser :** quand votre application a des types de tâches bien définis, connus à l'avance. La plupart des applications sont de bonnes candidates.
+
+**Limite :** nécessite que les appelants déclarent le type de tâche. Ne gère pas les requêtes ambiguës ou mixtes.
+
+## Stratégie 2 : Routage par longueur de prompt
+
+Route selon le nombre de tokens d'entrée plutôt que par type de tâche. Les prompts courts vont aux modèles bon marché ; les longs aux modèles capables.
+
+```python
+import tiktoken
+
+def router_par_longueur(messages: list[dict]) -> str:
+    enc = tiktoken.encoding_for_model("gpt-4o")
+    total = sum(len(enc.encode(m.get("content", ""))) for m in messages)
+
+    if total < 500:
+        return "gpt-4o-mini"
+    elif total < 3000:
+        return "gpt-4o"
+    else:
+        return "anthropic/claude-3-7-sonnet"  # 200K contexte pour les entrées longues
+```
+
+**Quand l'utiliser :** quand le type de tâche n'est pas déclaré mais que la longueur du prompt est un bon indicateur de complexité.
+
+**Limite :** un prompt long mais simple (ex. un document FAQ de 5 000 tokens avec une question simple) sera sur-routé vers des modèles coûteux.
+
+## Stratégie 3 : Routage en cascade
+
+Essaie le modèle le moins cher en premier. Si la réponse ne passe pas une vérification de qualité, réessaie avec un modèle plus puissant.
+
+```python
+TIERS = ["gpt-4o-mini", "gpt-4o", "anthropic/claude-3-7-sonnet"]
+
+def est_acceptable(texte: str, type_tache: str) -> bool:
+    if type_tache == "classification":
+        categories_valides = {"facturation", "technique", "general"}
+        return texte.strip().lower() in categories_valides
+    if type_tache == "json_extraction":
+        try:
+            import json; json.loads(texte); return True
+        except ValueError:
+            return False
+    return len(texte.strip()) > 10
+
+def appel_cascade(messages: list[dict], type_tache: str) -> str:
+    for modele in TIERS:
+        try:
+            response = client.chat.completions.create(
+                model=modele, messages=messages, temperature=0
+            )
+            texte = response.choices[0].message.content
+            if est_acceptable(texte, type_tache):
+                return texte
+        except Exception:
+            continue
+    raise RuntimeError("Tous les niveaux ont échoué à la validation")
+```
+
+**Quand l'utiliser :** quand vous pouvez définir une vérification de qualité légère et accepter une double facturation occasionnelle (tentative cheap + retry coûteux). Le coût net est presque toujours inférieur à l'utilisation systématique du modèle cher.
+
+**Limite :** la latence est plus élevée lors des escalades.
+
+## Stratégie 4 : Routage basé sur la qualité
+
+Utilise un modèle de scoring rapide et bon marché pour évaluer la réponse et décider de la servir ou de réessayer avec un meilleur modèle.
+
+```python
+def scorer_reponse(texte: str, prompt_original: str) -> float:
+    prompt_scoring = f"""
+Évaluez cette réponse sur une échelle de 0.0 à 1.0 en termes de :
+- Précision et complétude
+- Respect des instructions originales
+- Longueur et format appropriés
+
+Prompt original : {prompt_original[:200]}
+Réponse : {texte[:500]}
+
+Répondez uniquement avec un nombre entre 0.0 et 1.0.
+"""
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt_scoring}],
+        temperature=0, max_tokens=5
+    )
+    try:
+        return float(response.choices[0].message.content.strip())
+    except ValueError:
+        return 0.5
+
+def appel_route_qualite(messages: list[dict], seuil: float = 0.8) -> str:
+    response_cheap = client.chat.completions.create(
+        model="gpt-4o-mini", messages=messages
+    )
+    texte = response_cheap.choices[0].message.content
+    score = scorer_reponse(texte, messages[-1]["content"])
+
+    if score >= seuil:
+        return texte
+    
+    response_cher = client.chat.completions.create(
+        model="gpt-4o", messages=messages
+    )
+    return response_cher.choices[0].message.content
+```
+
+**Quand l'utiliser :** pour les workloads batch ou quasi-temps-réel où la qualité compte et où vous pouvez définir des critères d'évaluation.
+
+## Stratégie 5 : Routage avec redondance de fournisseurs
+
+Distribue les requêtes entre plusieurs fournisseurs et bascule en transparence en cas de dégradation. Principalement une stratégie de résilience.
+
+```python
+import random
+
+ENDPOINTS = [
+    ("openai/gpt-4o",              "https://api.openai.com/v1"),
+    ("anthropic/claude-3-7-sonnet","https://api.anthropic.com/v1"),
+]
+
+def appel_resilient(messages: list[dict]) -> str:
+    endpoints = random.sample(ENDPOINTS, len(ENDPOINTS))
+    
+    for modele, base_url in endpoints:
+        try:
+            c = OpenAI(base_url=base_url, api_key=obtenir_cle(modele))
+            response = c.chat.completions.create(
+                model=modele.split("/")[1],
+                messages=messages,
+                timeout=10.0
+            )
+            return response.choices[0].message.content
+        except Exception:
+            continue
+    
+    raise RuntimeError("Tous les fournisseurs ont échoué")
+```
+
+**Quand l'utiliser :** pour les applications critiques où une panne d'un fournisseur est inacceptable.
+
+## Tableau comparatif des stratégies
+
+| Stratégie | Complexité | Économies potentielles | Impact latence | Idéal pour |
+|-----------|------------|------------------------|----------------|------------|
+| Statique par type | Faible | Élevées | Aucun | Apps bien typées |
+| Par longueur | Faible | Modérées | Aucun | Traitement de documents |
+| Cascade | Moyen | Élevées | Moyen (sur escalade) | Sorties structurées |
+| Basé sur la qualité | Élevé | Très élevées | Moyen | Workloads batch |
+| Redondance fournisseurs | Moyen | Faibles–Modérées | Faible | Haute disponibilité |
+
+## Pourquoi le routage automatique surpasse le routage manuel
+
+Chaque stratégie ci-dessus nécessite de la maintenance : les listes de modèles changent, les prix se mettent à jour tous les trimestres, de nouveaux petits modèles apparaissent. Le routeur de modèles GateCtr applique le routage automatiquement sur chaque requête. Vous définissez des politiques, le routeur s'occupe du reste.
+
+```bash
+# Passer "auto" comme modèle — le routeur décide
+curl https://api.gatectr.com/v1/chat/completions \
+  -H "Authorization: Bearer $GATECTR_API_KEY" \
+  -d '{"model": "auto", "messages": [{"role": "user", "content": "..."}]}'
+```
+
+[Lire la documentation](https://docs.gatectr.com) | [Commencer gratuitement →](https://app.gatectr.com/sign-up)
+
+## Questions fréquentes
+
+### Comment mesurer si mon routage fonctionne ?
+
+Suivez le coût moyen par requête avant et après l'activation du routage. Suivez également votre métrique de qualité par niveau de modèle. Une baisse de 30 % du coût moyen sans dégradation du taux de succès est un fort signal que le routage est efficace.
+
+### Puis-je combiner plusieurs stratégies ?
+
+Oui, et c'est ce que font la plupart des systèmes en production. Combinaison courante : routage statique par type de tâche (signal principal) + routage par longueur en fallback pour les requêtes non classifiées + cascade pour les sorties structurées qui nécessitent une validation.
+
+### Quelle est la surcharge de latence du routage ?
+
+Le routage statique n'en ajoute aucune — c'est une recherche dans un dictionnaire avant l'appel API. Le routage en cascade et basé sur la qualité ajoutent de la latence lors des escalades, typiquement un aller-retour supplémentaire. Pour le chat temps-réel, utilisez le routage statique ou par longueur.
