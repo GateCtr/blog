@@ -1,7 +1,7 @@
 ---
 slug: llm-model-routing-explained
 title: "LLM Model Routing Explained: Send Every Task to the Right Model"
-excerpt: LLM model routing cuts costs 30–50% by matching requests to the cheapest capable model. Here is how it works, and how to implement it without maintaining routing logic.
+excerpt: LLM model routing cuts costs 30–50% by matching each request to the cheapest capable model. Here is how it works and how to implement it.
 author: GateCtr Team
 date: "2026-03-12"
 category: Model Routing
@@ -95,9 +95,34 @@ def route_request(prompt: str, task_type: str) -> str:
     tier = classify_complexity(prompt, task_type)
     return MODEL_MAP[tier]
 
-# Usage
-model = route_request(user_prompt, detected_task_type)
-response = openai.chat.completions.create(model=model, messages=[...])
+def call_with_fallback(
+    prompt: str,
+    task_type: str,
+    messages: list[dict],
+    max_retries: int = 2
+) -> str:
+    """
+    Route the request and fall back to a higher tier if the selected
+    model is unavailable or returns an error.
+    """
+    tier = classify_complexity(prompt, task_type)
+    tiers = list(ComplexityTier)
+    start_index = tiers.index(tier)
+
+    for i in range(start_index, min(start_index + max_retries + 1, len(tiers))):
+        model = MODEL_MAP[tiers[i]]
+        try:
+            response = openai.chat.completions.create(
+                model=model, messages=messages
+            )
+            return response.choices[0].message.content
+        except openai.APIStatusError as e:
+            if e.status_code in (429, 503) and i < len(tiers) - 1:
+                # Rate limited or unavailable — escalate to next tier
+                continue
+            raise
+
+    raise RuntimeError("All model tiers exhausted")
 ```
 
 This works for simple cases. The problems emerge quickly in production:
@@ -139,7 +164,7 @@ curl https://api.gatectr.com/v1/chat/completions \
 
 Setting `model: "auto"` delegates the selection to the router. You can also set routing policies by endpoint, by request tag, or globally. The dashboard shows you exactly which model handled each request, the cost, and the routing reason — so you can tune the policy over time.
 
-Full routing policy documentation is available at [docs.gatectr.com](https://docs.gatectr.com). [Start free →](https://app.gatectr.com/sign-up)
+[read the docs](https://docs.gatectr.com) for full routing policy documentation. [Start free →](https://app.gatectr.com/sign-up)
 
 ## Frequently Asked Questions
 

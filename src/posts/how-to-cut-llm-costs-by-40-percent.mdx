@@ -103,9 +103,24 @@ Hard caps and soft alerts are enforced on every request. Set limits at the organ
 
 ---
 
-**Ready to see the savings?** [Start free with GateCtr →](https://app.gatectr.com/sign-up) — most teams are fully set up in under 10 minutes.
+**Ready to see the savings?** [Start free →](https://app.gatectr.com/sign-up) — most teams are fully set up in under 10 minutes.
 
 ---
+
+## How GateCtr Works in Practice
+
+Here is what the before/after picture looks like for a team at modest production scale (500,000 requests/month, GPT-4o):
+
+| | Before GateCtr | After GateCtr |
+|--|----------------|---------------|
+| **Avg. input tokens/request** | 2,500 | 1,400 |
+| **Model mix** | 100% GPT-4o | 35% GPT-4o, 65% GPT-4o mini |
+| **Monthly input cost** | ~$6,250 | ~$1,100 |
+| **Budget incidents** | Undetected until invoice | Zero — hard caps enforced |
+| **Cost visibility** | Monthly total only | Per-request, by feature and team |
+| **Setup time** | — | Under 1 hour |
+
+The total saving in this example is 82%. More conservative workloads — where tasks are less clearly tierable — still typically see 40–50%.
 
 ## What to Expect in the First Week
 
@@ -118,26 +133,15 @@ The results are not theoretical. Teams that route traffic through a properly con
 
 The total reduction is consistently in the 40–60% range. For a team spending $10,000/month on LLM inference, that is $4,000–$6,000 back every month.
 
-## How to Measure the Impact
-
-Before and after metrics to track:
-
-1. **Average input tokens per request** — the clearest measure of context bloat
-2. **Cost per request by endpoint** — shows which features are expensive
-3. **Model distribution** — what percentage of requests hit each model tier
-4. **Monthly total vs. budget** — the bottom line
-
-Most gateways expose this data through a dashboard and an API. If you cannot query per-request cost data, you are flying blind.
-
 ## Frequently Asked Questions
 
-### Does routing through a gateway add latency?
+### How much can I realistically reduce my LLM costs?
 
-A well-implemented gateway adds less than 10ms of overhead per request — well within the noise for any production application. The latency from the gateway is orders of magnitude smaller than the latency of the model call itself.
+The range depends on your workload mix. Teams with a high proportion of simple, structured tasks (classification, extraction, short Q&A) see the largest savings — often 60–70% — because most requests route to cheap models. Teams with predominantly complex generation workloads typically see 25–35%, primarily from context optimization. The 40% headline figure is a conservative mid-range estimate across diverse workloads.
 
-### Is it safe to send production traffic through a third-party gateway?
+### Does GateCtr charge on top of the model API cost?
 
-Look for gateways that operate as a transparent proxy — they never store your prompts or responses, only the metadata (token counts, cost, model, timestamp). GateCtr's architecture is documented in the [technical overview](https://docs.gatectr.com) and does not persist request content.
+GateCtr's pricing is based on usage volume, not a percentage of your model spend. For most teams, the gateway cost is well under 10% of the savings it generates — typically paying for itself within the first few days of the month. [read the docs](https://docs.gatectr.com) for current pricing details.
 
 ### How long does setup take?
 
