@@ -3,16 +3,20 @@ import type { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
-import { readFileSync, writeFileSync, existsSync, readdirSync, unlinkSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, unlinkSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 
-const PORT = 3001;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 const POSTS_DIR = join(ROOT, 'src', 'posts');
-const STATS_FILE = join(ROOT, 'data', 'stats.json');
+const DATA_DIR = join(ROOT, 'data');
+const STATS_FILE = join(DATA_DIR, 'stats.json');
+
+mkdirSync(DATA_DIR, { recursive: true });
+mkdirSync(join(POSTS_DIR, 'fr'), { recursive: true });
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
@@ -123,7 +127,10 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
-app.use(cors({ origin: ['http://localhost:5000', 'http://localhost:5001'], credentials: true }));
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGIN
+  ? [process.env.ALLOWED_ORIGIN, 'http://localhost:5000']
+  : ['http://localhost:5000', 'http://localhost:5001'];
+app.use(cors({ origin: ALLOWED_ORIGINS, credentials: true }));
 
 app.post('/api/admin/login', (req, res) => {
   const { email, password } = req.body as { email?: string; password?: string };
