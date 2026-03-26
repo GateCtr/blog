@@ -1,3 +1,5 @@
+/* Breakpoints: 768px (tablet/mobile), 480px (small phone) */
+
 .page {
   padding: 2.5rem 1.5rem 4rem;
 }
@@ -89,6 +91,7 @@
   justify-content: center;
   font-weight: 700;
   font-size: 0.875rem;
+  flex-shrink: 0;
 }
 
 .author {
@@ -164,6 +167,7 @@
 
 .ctaBoxText {
   flex: 1;
+  min-width: 0;
 }
 
 .ctaBoxTitle {
@@ -186,6 +190,7 @@
   font-size: 0.875rem;
   font-weight: 700;
   white-space: nowrap;
+  flex-shrink: 0;
   transition: opacity var(--transition);
 }
 
@@ -246,6 +251,7 @@
   font-weight: 500;
   color: var(--color-text);
   flex: 1;
+  min-width: 0;
 }
 
 .moreReadTime {
@@ -265,4 +271,61 @@
   display: inline-block;
   margin-top: 1rem;
   color: var(--color-navy);
+}
+
+/* ── Mobile layout (≤ 768px) ────────────────── */
+@media (max-width: 768px) {
+  .page {
+    padding: 1.75rem 1.25rem 3rem;
+  }
+
+  .backBtn {
+    margin-bottom: 1.5rem;
+  }
+
+  .ctaBox {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1.5rem;
+    gap: 1.25rem;
+  }
+
+  .ctaBoxBtn {
+    width: 100%;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .moreCard {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .moreReadTime {
+    margin-left: auto;
+  }
+}
+
+/* ── Small phone (≤ 480px) ──────────────────── */
+@media (max-width: 480px) {
+  .page {
+    padding: 1.25rem 1rem 2.5rem;
+  }
+
+  .excerpt {
+    font-size: 0.975rem;
+  }
+
+  .content h2 {
+    font-size: 1.2rem;
+  }
+
+  .ctaBox {
+    padding: 1.25rem;
+  }
+
+  .more {
+    margin-top: 2.5rem;
+    padding-top: 2rem;
+  }
 }

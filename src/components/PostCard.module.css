@@ -1,3 +1,5 @@
+/* Breakpoints: 768px (tablet/mobile), 480px (small phone) */
+
 .card {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
@@ -103,4 +105,19 @@
 
 .card:hover .readMore {
   opacity: 0.75;
+}
+
+/* ── Small phone (≤ 480px) ──────────────────── */
+@media (max-width: 480px) {
+  .body {
+    padding: 1.25rem;
+  }
+
+  .featured .body {
+    padding: 1.25rem;
+  }
+
+  .featured .title {
+    font-size: 1.2rem;
+  }
 }

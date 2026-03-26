@@ -1,3 +1,5 @@
+/* Breakpoints: 768px (tablet/mobile), 480px (small phone) */
+
 .page {
   min-height: calc(100vh - 60px);
 }
@@ -81,12 +83,6 @@
   grid-template-columns: 210px 1fr;
   gap: 2.5rem;
   align-items: start;
-}
-
-@media (max-width: 768px) {
-  .main {
-    grid-template-columns: 1fr;
-  }
 }
 
 .sidebar {
@@ -211,4 +207,112 @@
   background: var(--color-bg-secondary);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
+}
+
+/* ── Mobile layout (≤ 768px) ────────────────── */
+@media (max-width: 768px) {
+  .hero {
+    padding: 2.75rem 1.25rem 2.25rem;
+  }
+
+  .heroSub {
+    font-size: 0.975rem;
+  }
+
+  .searchWrap {
+    max-width: 100%;
+  }
+
+  .main {
+    grid-template-columns: 1fr;
+    padding: 1.5rem 1.25rem;
+    gap: 1.5rem;
+  }
+
+  .sidebar {
+    position: static;
+    order: 2;
+  }
+
+  .content {
+    order: 1;
+  }
+
+  .sidebarSection {
+    padding: 1rem;
+  }
+
+  .categoryList {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 0.4rem;
+    padding-bottom: 0.25rem;
+    scrollbar-width: none;
+  }
+
+  .categoryList::-webkit-scrollbar {
+    display: none;
+  }
+
+  .categoryBtn {
+    width: auto;
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 0.4rem 0.75rem;
+    justify-content: center;
+    gap: 0.35rem;
+  }
+
+  .ctaBanner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+
+  .ctaBannerTitle {
+    margin-bottom: 0.2rem;
+  }
+
+  .ctaBannerText {
+    margin-bottom: 0;
+    font-size: 0.75rem;
+  }
+
+  .ctaBannerBtn {
+    width: auto;
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 0.5rem 1rem;
+  }
+}
+
+/* ── Small phone (≤ 480px) ──────────────────── */
+@media (max-width: 480px) {
+  .hero {
+    padding: 2rem 1rem 1.75rem;
+  }
+
+  .main {
+    padding: 1.25rem 1rem;
+    gap: 1.25rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ctaBanner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ctaBannerBtn {
+    width: 100%;
+    text-align: center;
+  }
 }

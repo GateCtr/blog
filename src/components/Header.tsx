@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import styles from './Header.module.css';
 
@@ -12,32 +13,61 @@ function GateCtrLogo() {
 
 export default function Header() {
   const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [menuOpen]);
+
+  const close = () => setMenuOpen(false);
 
   return (
     <header className={styles.header}>
       <div className={styles.container}>
-        <Link to="/" className={styles.logo}>
+        <Link to="/" className={styles.logo} onClick={close}>
           <GateCtrLogo />
           <span className={styles.logoText}>Gate<span className={styles.logoC}>C</span>tr</span>
           <span className={styles.logoBadge}>Blog</span>
         </Link>
-        <nav className={styles.nav}>
-          <a href="https://gatectr.com" className={styles.navLink} target="_blank" rel="noopener noreferrer">
+
+        <button
+          className={styles.hamburger}
+          onClick={() => setMenuOpen(o => !o)}
+          aria-label="Toggle menu"
+          aria-expanded={menuOpen}
+        >
+          <span className={`${styles.bar} ${menuOpen ? styles.barTop : ''}`} />
+          <span className={`${styles.bar} ${menuOpen ? styles.barMid : ''}`} />
+          <span className={`${styles.bar} ${menuOpen ? styles.barBot : ''}`} />
+        </button>
+
+        <nav className={`${styles.nav} ${menuOpen ? styles.navOpen : ''}`}>
+          <a href="https://gatectr.com" className={styles.navLink} target="_blank" rel="noopener noreferrer" onClick={close}>
             Home
           </a>
-          <a href="https://docs.gatectr.com" className={styles.navLink} target="_blank" rel="noopener noreferrer">
+          <a href="https://docs.gatectr.com" className={styles.navLink} target="_blank" rel="noopener noreferrer" onClick={close}>
             Docs
           </a>
           <Link
             to="/about"
             className={`${styles.navLink} ${location.pathname === '/about' ? styles.active : ''}`}
+            onClick={close}
           >
             About
           </Link>
-          <a href="https://app.gatectr.com/sign-in" className={styles.signInBtn} target="_blank" rel="noopener noreferrer">
+          <a href="https://app.gatectr.com/sign-in" className={styles.signInBtn} target="_blank" rel="noopener noreferrer" onClick={close}>
             Sign in
           </a>
-          <a href="https://app.gatectr.com/sign-up" className={styles.ctaBtn} target="_blank" rel="noopener noreferrer">
+          <a href="https://app.gatectr.com/sign-up" className={styles.ctaBtn} target="_blank" rel="noopener noreferrer" onClick={close}>
             Start free
           </a>
         </nav>
