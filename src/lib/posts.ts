@@ -15,6 +15,7 @@ const modules = import.meta.glob<MDXModule>('../posts/*.mdx', { eager: true });
 const _posts: PostEntry[] = Object.entries(modules)
   .map(([, mod]) => ({
     ...mod.frontmatter,
+    id: mod.frontmatter.slug,
     Component: mod.default,
   }))
   .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

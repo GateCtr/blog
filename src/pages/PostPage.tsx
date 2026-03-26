@@ -1,4 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { MDXProvider } from '@mdx-js/react';
 import { getPostBySlug, getPosts } from '../lib/posts';
 import styles from './PostPage.module.css';
 
@@ -46,7 +47,9 @@ export default function PostPage() {
           <div className={styles.divider} />
 
           <div className={styles.content}>
-            <Component />
+            <MDXProvider>
+              <Component />
+            </MDXProvider>
           </div>
 
           <div className={styles.ctaBox}>
