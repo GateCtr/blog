@@ -107,17 +107,26 @@
   opacity: 0.75;
 }
 
-/* ── Small phone (≤ 480px) ──────────────────── */
-@media (max-width: 480px) {
-  .body {
-    padding: 1.25rem;
+/* ── Mobile: featured → standard card (≤ 640px) */
+@media (max-width: 640px) {
+  .card.featured {
+    border-color: var(--color-border);
+    background: var(--color-bg);
   }
 
   .featured .body {
-    padding: 1.25rem;
+    padding: 1.5rem;
   }
 
   .featured .title {
-    font-size: 1.2rem;
+    font-size: 1.15rem;
+  }
+}
+
+/* ── Small phone (≤ 480px) ──────────────────── */
+@media (max-width: 480px) {
+  .body,
+  .featured .body {
+    padding: 1.25rem;
   }
 }

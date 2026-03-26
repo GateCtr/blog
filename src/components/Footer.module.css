@@ -43,16 +43,19 @@
   color: var(--color-text-muted);
 }
 
-/* ── Small phone (≤ 480px) ──────────────────── */
-@media (max-width: 480px) {
-  .footer {
-    padding: 1.5rem 1rem;
-  }
-
+/* ── Mobile layout (≤ 768px) ────────────────── */
+@media (max-width: 768px) {
   .container {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+  }
+}
+
+/* ── Small phone (≤ 480px) ──────────────────── */
+@media (max-width: 480px) {
+  .footer {
+    padding: 1.5rem 1rem;
   }
 
   .copy {
