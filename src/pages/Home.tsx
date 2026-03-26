@@ -57,6 +57,7 @@ export default function Home() {
         description={tr.seo.homeDesc}
         canonical="/"
         jsonLd={websiteSchema}
+        lang={lang}
       />
 
       <section className={styles.hero}>

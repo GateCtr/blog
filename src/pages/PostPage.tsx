@@ -57,6 +57,7 @@ export default function PostPage() {
           category: post.category,
         }}
         jsonLd={blogPostingSchema}
+        lang={lang}
       />
 
       <div className={styles.container}>

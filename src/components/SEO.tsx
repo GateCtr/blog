@@ -1,8 +1,19 @@
 import { Helmet } from 'react-helmet-async';
+import type { Lang } from '../context/LangContext';
 
 const BASE_URL = 'https://blog.gatectr.com';
 const SITE_NAME = 'GateCtr Blog';
 const DEFAULT_IMAGE = `${BASE_URL}/logo.svg`;
+
+const OG_LOCALE: Record<Lang, string> = {
+  en: 'en_US',
+  fr: 'fr_FR',
+};
+
+const ALTERNATE_LOCALE: Record<Lang, string> = {
+  en: 'fr_FR',
+  fr: 'en_US',
+};
 
 interface ArticleMeta {
   publishedTime: string;
@@ -17,6 +28,7 @@ interface SEOProps {
   type?: 'website' | 'article';
   article?: ArticleMeta;
   jsonLd?: object;
+  lang?: Lang;
 }
 
 export default function SEO({
@@ -26,15 +38,22 @@ export default function SEO({
   type = 'website',
   article,
   jsonLd,
+  lang = 'en',
 }: SEOProps) {
   const fullTitle = `${title} — ${SITE_NAME}`;
   const url = canonical ? `${BASE_URL}${canonical}` : BASE_URL;
+  const htmlLang = lang === 'fr' ? 'fr' : 'en';
 
   return (
     <Helmet>
+      <html lang={htmlLang} />
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
       <link rel="canonical" href={url} />
+
+      <link rel="alternate" hrefLang="en" href={url} />
+      <link rel="alternate" hrefLang="fr" href={url} />
+      <link rel="alternate" hrefLang="x-default" href={url} />
 
       <meta property="og:site_name" content={SITE_NAME} />
       <meta property="og:type" content={type} />
@@ -42,6 +61,8 @@ export default function SEO({
       <meta property="og:description" content={description} />
       <meta property="og:url" content={url} />
       <meta property="og:image" content={DEFAULT_IMAGE} />
+      <meta property="og:locale" content={OG_LOCALE[lang]} />
+      <meta property="og:locale:alternate" content={ALTERNATE_LOCALE[lang]} />
 
       <meta name="twitter:card" content="summary" />
       <meta name="twitter:title" content={fullTitle} />

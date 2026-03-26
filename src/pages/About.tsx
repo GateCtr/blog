@@ -14,6 +14,7 @@ export default function About() {
         title={ab.title}
         description={tr.seo.aboutDesc}
         canonical="/about"
+        lang={lang}
       />
       <div className={styles.container}>
         <header className={styles.header}>
