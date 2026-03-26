@@ -53,7 +53,7 @@ export default function PostPage() {
               <div className={styles.ctaBoxTitle}>Cut your LLM costs by 40%</div>
               <div className={styles.ctaBoxSub}>One endpoint swap. No code changes required.</div>
             </div>
-            <a href="https://app.gatectr.com" className={styles.ctaBoxBtn} target="_blank" rel="noopener noreferrer">
+            <a href="https://app.gatectr.com/sign-up" className={styles.ctaBoxBtn} target="_blank" rel="noopener noreferrer">
               Start free →
             </a>
           </div>

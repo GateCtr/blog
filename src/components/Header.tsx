@@ -37,7 +37,7 @@ export default function Header() {
           <a href="https://app.gatectr.com/sign-in" className={styles.signInBtn} target="_blank" rel="noopener noreferrer">
             Sign in
           </a>
-          <a href="https://app.gatectr.com" className={styles.ctaBtn} target="_blank" rel="noopener noreferrer">
+          <a href="https://app.gatectr.com/sign-up" className={styles.ctaBtn} target="_blank" rel="noopener noreferrer">
             Start free
           </a>
         </nav>

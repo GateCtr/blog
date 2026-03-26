@@ -72,7 +72,7 @@ export default function Home() {
           <div className={styles.ctaBanner}>
             <div className={styles.ctaBannerTitle}>Cut LLM costs by 40%</div>
             <p className={styles.ctaBannerText}>One endpoint swap. Full control over tokens, budgets, and routing.</p>
-            <a href="https://app.gatectr.com" className={styles.ctaBannerBtn} target="_blank" rel="noopener noreferrer">
+            <a href="https://app.gatectr.com/sign-up" className={styles.ctaBannerBtn} target="_blank" rel="noopener noreferrer">
               Start free →
             </a>
           </div>
