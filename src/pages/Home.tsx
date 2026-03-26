@@ -9,16 +9,32 @@ const categories = getCategories();
 
 const websiteSchema = {
   '@context': 'https://schema.org',
-  '@type': 'Blog',
-  name: 'GateCtr Blog',
-  url: 'https://blog.gatectr.com',
-  description:
-    'Practical insights on LLM cost optimization, model routing, and AI infrastructure for engineering teams.',
-  publisher: {
-    '@type': 'Organization',
-    name: 'GateCtr',
-    url: 'https://gatectr.com',
-  },
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      name: 'GateCtr Blog',
+      url: 'https://blog.gatectr.com',
+      description:
+        'Practical insights on LLM cost optimization, model routing, and AI infrastructure for engineering teams.',
+      publisher: {
+        '@type': 'Organization',
+        name: 'GateCtr',
+        url: 'https://gatectr.com',
+      },
+    },
+    {
+      '@type': 'Blog',
+      name: 'GateCtr Blog',
+      url: 'https://blog.gatectr.com',
+      description:
+        'Practical insights on LLM cost optimization, model routing, and AI infrastructure for engineering teams.',
+      publisher: {
+        '@type': 'Organization',
+        name: 'GateCtr',
+        url: 'https://gatectr.com',
+      },
+    },
+  ],
 };
 
 export default function Home() {
