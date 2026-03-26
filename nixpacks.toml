@@ -5,7 +5,7 @@ nixPkgs = ["nodejs_20"]
 cmds = ["npm install --production=false"]
 
 [phases.build]
-cmds = []
+cmds = ["npm run build:server"]
 
 [start]
-cmd = "node_modules/.bin/tsx server/index.ts"
+cmd = "node dist-server/index.js"
