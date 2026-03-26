@@ -1,4 +1,5 @@
 import express from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
@@ -13,9 +14,40 @@ const PORT = 3001;
 const POSTS_DIR = join(ROOT, 'src', 'posts');
 const STATS_FILE = join(ROOT, 'data', 'stats.json');
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin@gatectr.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? 'changeme';
-const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-in-production';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const JWT_SECRET = process.env.JWT_SECRET;
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+function checkConfig() {
+  const missing: string[] = [];
+  if (!ADMIN_EMAIL) missing.push('ADMIN_EMAIL');
+  if (!ADMIN_PASSWORD) missing.push('ADMIN_PASSWORD');
+  if (!JWT_SECRET) missing.push('JWT_SECRET');
+
+  if (missing.length > 0) {
+    const msg = `[admin-api] WARNING: Missing env vars: ${missing.join(', ')}`;
+    if (isProduction) {
+      console.error(msg);
+      console.error('[admin-api] FATAL: Set required env vars before starting in production.');
+      process.exit(1);
+    } else {
+      console.warn(msg);
+      console.warn('[admin-api] Using insecure defaults for development — DO NOT use in production.');
+    }
+  }
+
+  if (!isProduction && JWT_SECRET && JWT_SECRET.length < 32) {
+    console.warn('[admin-api] WARNING: JWT_SECRET is shorter than 32 characters — use a longer secret in production.');
+  }
+}
+
+checkConfig();
+
+const EFFECTIVE_EMAIL = ADMIN_EMAIL ?? 'admin@gatectr.com';
+const EFFECTIVE_PASSWORD = ADMIN_PASSWORD ?? 'changeme';
+const EFFECTIVE_SECRET = JWT_SECRET ?? 'dev-secret-change-in-production-min-32-chars';
 
 interface StatsFile {
   total_views: number;
@@ -54,7 +86,7 @@ function parseFrontmatter(content: string): ArticleFrontmatter | null {
     const idx = line.indexOf(':');
     if (idx === -1) continue;
     const key = line.slice(0, idx).trim();
-    let val: string = line.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
+    const val: string = line.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
     result[key] = key === 'readTime' ? parseInt(val, 10) : val;
   }
   return result as unknown as ArticleFrontmatter;
@@ -73,14 +105,18 @@ function listArticles(lang: 'en' | 'fr') {
     .filter(Boolean);
 }
 
-function verifyToken(authHeader: string | undefined): boolean {
-  if (!authHeader?.startsWith('Bearer ')) return false;
-  const token = authHeader.slice(7);
+function requireAuth(req: Request, res: Response, next: NextFunction): void {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Non autorisé.' });
+    return;
+  }
+  const token = header.slice(7);
   try {
-    jwt.verify(token, JWT_SECRET);
-    return true;
+    jwt.verify(token, EFFECTIVE_SECRET);
+    next();
   } catch {
-    return false;
+    res.status(401).json({ error: 'Token invalide ou expiré.' });
   }
 }
 
@@ -95,39 +131,27 @@ app.post('/api/admin/login', (req, res) => {
     res.status(400).json({ error: 'Email et mot de passe requis.' });
     return;
   }
-  if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+  if (email !== EFFECTIVE_EMAIL || password !== EFFECTIVE_PASSWORD) {
     res.status(401).json({ error: 'Identifiants invalides.' });
     return;
   }
-  const token = jwt.sign({ email, role: 'admin' }, JWT_SECRET, { expiresIn: '8h' });
+  const token = jwt.sign({ email, role: 'admin' }, EFFECTIVE_SECRET, { expiresIn: '8h' });
   res.json({ token });
 });
 
-app.get('/api/admin/me', (req, res) => {
-  if (!verifyToken(req.headers.authorization)) {
-    res.status(401).json({ error: 'Non autorisé.' });
-    return;
-  }
+app.get('/api/admin/me', requireAuth, (req, res) => {
   const token = req.headers.authorization!.slice(7);
   const payload = jwt.decode(token) as { email: string };
   res.json({ email: payload.email, role: 'admin' });
 });
 
-app.get('/api/admin/articles', (req, res) => {
-  if (!verifyToken(req.headers.authorization)) {
-    res.status(401).json({ error: 'Non autorisé.' });
-    return;
-  }
+app.get('/api/admin/articles', requireAuth, (_req, res) => {
   const en = listArticles('en');
   const fr = listArticles('fr');
   res.json([...en, ...fr]);
 });
 
-app.post('/api/admin/articles', (req, res) => {
-  if (!verifyToken(req.headers.authorization)) {
-    res.status(401).json({ error: 'Non autorisé.' });
-    return;
-  }
+app.post('/api/admin/articles', requireAuth, (req, res) => {
   const { lang, slug, frontmatter, body } = req.body as {
     lang: 'en' | 'fr';
     slug: string;
@@ -157,11 +181,7 @@ app.post('/api/admin/articles', (req, res) => {
   res.json({ ok: true, slug: slugClean, path: filePath });
 });
 
-app.delete('/api/admin/articles/:lang/:slug', (req, res) => {
-  if (!verifyToken(req.headers.authorization)) {
-    res.status(401).json({ error: 'Non autorisé.' });
-    return;
-  }
+app.delete('/api/admin/articles/:lang/:slug', requireAuth, (req, res) => {
   const { lang, slug } = req.params as { lang: string; slug: string };
   if (lang !== 'en' && lang !== 'fr') {
     res.status(400).json({ error: 'lang doit être "en" ou "fr".' });
@@ -203,6 +223,6 @@ app.post('/api/track', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`[admin-api] Listening on http://localhost:${PORT}`);
-  console.log(`[admin-api] ADMIN_EMAIL: ${ADMIN_EMAIL}`);
-  console.log(`[admin-api] JWT_SECRET : ${JWT_SECRET === 'dev-secret-change-in-production' ? '(default — set JWT_SECRET in env)' : 'set'}`);
+  console.log(`[admin-api] ADMIN_EMAIL: ${EFFECTIVE_EMAIL}`);
+  console.log(`[admin-api] JWT_SECRET : ${JWT_SECRET ? 'set via env' : '(default — set JWT_SECRET in env for production)'}`);
 });
