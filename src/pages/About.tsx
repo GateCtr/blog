@@ -1,8 +1,14 @@
+import SEO from '../components/SEO';
 import styles from './About.module.css';
 
 export default function About() {
   return (
     <div className={styles.page}>
+      <SEO
+        title="About"
+        description="GateCtr Blog covers the operational side of running LLMs in production — context optimization, model routing, budget controls, observability, and provider selection."
+        canonical="/about"
+      />
       <div className={styles.container}>
         <header className={styles.header}>
           <h1 className={styles.title}>About GateCtr Blog</h1>

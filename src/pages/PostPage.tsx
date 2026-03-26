@@ -1,7 +1,10 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MDXProvider } from '@mdx-js/react';
 import { getPostBySlug, getPosts } from '../lib/posts';
+import SEO from '../components/SEO';
 import styles from './PostPage.module.css';
+
+const BASE_URL = 'https://blog.gatectr.com';
 
 export default function PostPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -19,9 +22,49 @@ export default function PostPage() {
 
   const { Component } = post;
   const otherPosts = getPosts().filter(p => p.slug !== post.slug).slice(0, 3);
+  const canonicalPath = `/post/${post.slug}`;
+  const postUrl = `${BASE_URL}${canonicalPath}`;
+
+  const blogPostingSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description: post.excerpt,
+    url: postUrl,
+    datePublished: post.date,
+    author: {
+      '@type': 'Person',
+      name: post.author,
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'GateCtr',
+      url: 'https://gatectr.com',
+    },
+    articleSection: post.category,
+    timeRequired: `PT${post.readTime}M`,
+    isPartOf: {
+      '@type': 'Blog',
+      name: 'GateCtr Blog',
+      url: BASE_URL,
+    },
+  };
 
   return (
     <div className={styles.page}>
+      <SEO
+        title={post.title}
+        description={post.excerpt}
+        canonical={canonicalPath}
+        type="article"
+        article={{
+          publishedTime: post.date,
+          author: post.author,
+          category: post.category,
+        }}
+        jsonLd={blogPostingSchema}
+      />
+
       <div className={styles.container}>
         <button onClick={() => navigate(-1)} className={styles.backBtn}>
           ← Back
@@ -32,7 +75,7 @@ export default function PostPage() {
             <div className={styles.meta}>
               <span className={styles.category}>{post.category}</span>
               <span className={styles.dot}>·</span>
-              <time>{formatDate(post.date)}</time>
+              <time dateTime={post.date}>{formatDate(post.date)}</time>
               <span className={styles.dot}>·</span>
               <span>{post.readTime} min read</span>
             </div>

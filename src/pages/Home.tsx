@@ -1,10 +1,25 @@
 import { useState } from 'react';
 import { getPosts, getCategories } from '../lib/posts';
 import PostCard from '../components/PostCard';
+import SEO from '../components/SEO';
 import styles from './Home.module.css';
 
 const posts = getPosts();
 const categories = getCategories();
+
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Blog',
+  name: 'GateCtr Blog',
+  url: 'https://blog.gatectr.com',
+  description:
+    'Practical insights on LLM cost optimization, model routing, and AI infrastructure for engineering teams.',
+  publisher: {
+    '@type': 'Organization',
+    name: 'GateCtr',
+    url: 'https://gatectr.com',
+  },
+};
 
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -12,7 +27,8 @@ export default function Home() {
 
   const filtered = posts.filter(post => {
     const matchesCategory = !selectedCategory || post.category === selectedCategory;
-    const matchesSearch = !search ||
+    const matchesSearch =
+      !search ||
       post.title.toLowerCase().includes(search.toLowerCase()) ||
       post.excerpt.toLowerCase().includes(search.toLowerCase());
     return matchesCategory && matchesSearch;
@@ -23,6 +39,13 @@ export default function Home() {
 
   return (
     <div className={styles.page}>
+      <SEO
+        title="The GateCtr Blog"
+        description="Practical insights on LLM cost optimization, model routing, and AI infrastructure for engineering teams."
+        canonical="/"
+        jsonLd={websiteSchema}
+      />
+
       <section className={styles.hero}>
         <div className={styles.heroContent}>
           <div className={styles.heroBadge}>LLM Infrastructure</div>
