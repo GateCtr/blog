@@ -1,0 +1,66 @@
+---
+slug: llm-model-routing-explained
+title: "LLM Model Routing: Sending the Right Task to the Right Model"
+excerpt: Not every task needs GPT-4. Smart model routing can cut costs dramatically by matching each request to the cheapest capable model — automatically.
+author: GateCtr Team
+date: "2026-03-12"
+category: Model Routing
+readTime: 7
+---
+
+One of the fastest ways to reduce LLM spend is also one of the most underused: routing different tasks to different models based on their actual complexity.
+
+The intuition is simple. A request to classify a support ticket into one of five categories does not need the same model as a request to generate a nuanced technical explanation. The first task is fast, cheap, and perfectly handled by a small model. The second might genuinely benefit from a frontier model.
+
+## The Cost Gap Between Models
+
+The price difference between models is larger than most people realize:
+
+- GPT-4 Turbo: ~$10 per million input tokens
+- GPT-3.5 Turbo: ~$0.50 per million input tokens
+- Smaller specialized models: ~$0.10–0.20 per million input tokens
+
+If even 60% of your requests can be handled by a cheaper model, you are looking at 50–80% cost reduction on those requests.
+
+## What Determines Routing
+
+Good routing decisions are based on a combination of signals:
+
+**Task type** is the most important factor. Classification, extraction, and summarization of short texts are all candidates for cheaper models. Open-ended generation, complex reasoning, and multi-step planning benefit from larger models.
+
+**Input complexity** matters too. A short, well-structured prompt is more likely to be handled correctly by a smaller model. A long, ambiguous, or multi-part prompt often needs more capacity.
+
+**Quality thresholds** should be configurable. For internal tooling, you might accept a slightly lower quality bar. For customer-facing features, you want the output to be excellent.
+
+## Implementing a Simple Router
+
+A basic routing strategy can be implemented with a classification step:
+
+```python
+def route_request(prompt: str, task_type: str) -> str:
+    simple_tasks = {"classify", "extract", "summarize_short"}
+    
+    if task_type in simple_tasks and len(prompt) < 1000:
+        return "gpt-3.5-turbo"
+    elif task_type == "code_generation":
+        return "gpt-4-turbo"
+    else:
+        return "gpt-4o"
+```
+
+This works, but it requires you to maintain the routing logic, keep model lists up to date, and handle fallbacks when a model underperforms.
+
+## The Case for Automatic Routing
+
+The better approach is to use a gateway that handles routing automatically. A well-implemented router:
+
+- Analyses each incoming request and selects the optimal model
+- Monitors output quality and routes up when quality drops
+- Keeps track of model performance and pricing in real time
+- Falls back gracefully when a model is unavailable
+
+With automatic routing, you get the cost savings without the maintenance burden. And because the routing decisions are data-driven, they improve over time as the system learns which models handle which tasks well.
+
+## Getting Started
+
+The simplest way to add model routing to your stack is to use a gateway that handles it transparently. Your application calls the same endpoint it always has. The gateway makes the routing decision. You see the savings in your monthly bill.

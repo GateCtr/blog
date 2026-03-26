@@ -1,0 +1,56 @@
+---
+slug: understanding-llm-usage-dashboards
+title: What a Good LLM Usage Dashboard Actually Shows You
+excerpt: Token counts alone are not enough. Here is what meaningful LLM observability looks like — and the questions a good dashboard should help you answer.
+author: GateCtr Team
+date: "2026-03-01"
+category: Operations
+readTime: 6
+---
+
+Most LLM monitoring tools show you token counts and costs. That is a start, but it is barely scratching the surface of what you actually need to know about your LLM usage.
+
+A genuinely useful usage dashboard helps you answer specific operational questions. Here is what those questions are and what data you need to answer them.
+
+## Question 1: Where Is the Money Going?
+
+The most fundamental question. The answer needs to be broken down by:
+
+- **Model**: Which models are you spending the most on? This tells you where routing improvements would have the most impact.
+- **Team or project**: Which teams or applications are the biggest consumers? This helps with budgeting and accountability.
+- **Request type**: Are you spending more on input tokens or output tokens? This affects your optimization strategy.
+
+A pie chart of total spend by model is more useful than a single monthly total.
+
+## Question 2: Is Cost Per Request Changing?
+
+Absolute cost matters, but cost per request matters more for understanding efficiency. If your total spend doubled but your request volume tripled, your per-request cost actually improved.
+
+Track average tokens per request over time. An upward trend here often indicates prompt bloat or conversation history accumulation — both fixable with the right tooling.
+
+## Question 3: Are There Anomalies?
+
+Unusual spikes in cost or request volume are often the first sign of a problem — a runaway agent, a misconfigured tool, or a sudden influx of traffic.
+
+Good dashboards surface anomalies proactively. You should not need to stare at charts to notice that something went wrong at 2 AM.
+
+## Question 4: Which Users or Sessions Are the Most Expensive?
+
+If your product allows end users to trigger LLM calls, some users will be dramatically more expensive than others. A small number of heavy users often accounts for a disproportionate share of total cost.
+
+Understanding this distribution helps you make better product decisions — and identify candidates for usage limits.
+
+## What Good LLM Observability Looks Like
+
+The best LLM dashboards are built on per-request logs, not aggregated metrics. Each request should capture:
+
+- Model used
+- Input tokens, output tokens, total cost
+- Team, project, user identifier
+- Request type or tag
+- Latency
+- Whether the request succeeded
+
+With per-request data, you can answer any question. With pre-aggregated metrics, you are limited to the questions someone anticipated when building the dashboard.
+
+The practical implication: choose observability tools that give you access to raw request data, not just pre-built charts.

@@ -1,0 +1,64 @@
+---
+slug: llm-budget-controls-for-teams
+title: LLM Budget Controls Every Team Needs in Production
+excerpt: Runaway LLM costs are a real production risk. Hard caps, soft alerts, and per-user limits are not optional — here is how to implement them properly.
+author: GateCtr Team
+date: "2026-03-07"
+category: Operations
+readTime: 7
+---
+
+In 2025, several high-profile companies made headlines for unexpected five- and six-figure LLM bills caused by runaway agents, infinite loops, and misconfigured tools. These incidents were not caused by carelessness — they were caused by the absence of proper budget controls.
+
+Every team running LLMs in production needs budget controls. Here is what that looks like in practice.
+
+## The Three Layers of Budget Control
+
+**Hard caps** stop spending at a defined limit. When a hard cap is reached, requests fail — loudly and clearly — until the budget is reset or increased. This is your last line of defence against truly catastrophic cost events.
+
+**Soft alerts** warn you before you hit the hard cap. A notification when you hit 70% of your monthly budget gives you time to investigate and respond. An alert at 90% gives you time to act. By the time you hit 100%, you should already know about it.
+
+**Rate limits** control the velocity of spending rather than the total. Limiting requests per minute per user prevents a single agent from burning through an entire month's budget in an hour.
+
+## Granularity Matters
+
+Budget controls are most useful when they can be applied at multiple levels:
+
+- **Organization level**: total monthly spend across all teams and projects
+- **Team level**: per-team allocations that prevent one team from crowding out others
+- **Project level**: per-application budgets for multi-product companies
+- **User level**: per-user limits for platforms where end users trigger LLM calls directly
+
+A well-designed system lets you set limits at any of these levels and have them stack correctly — a team cannot exceed the org limit even if their individual team budget is higher.
+
+## Implementing Hard Caps
+
+If you are not using a gateway, you can implement hard caps by tracking spend in a database and checking it before each request:
+
+```python
+async def check_budget(team_id: str, estimated_cost: float) -> bool:
+    current_spend = await db.get_monthly_spend(team_id)
+    hard_cap = await db.get_hard_cap(team_id)
+    
+    if current_spend + estimated_cost > hard_cap:
+        raise BudgetExceededError(
+            f"Request would exceed budget. Used: ${current_spend:.2f}, Cap: ${hard_cap:.2f}"
+        )
+    return True
+```
+
+## Alerting
+
+Alerts should go to the people who can act on them — typically the engineering lead and whoever manages the LLM budget. Use Slack, PagerDuty, or email depending on your team's workflow.
+
+Good alerts include:
+
+- Current spend amount and percentage of cap
+- Which team/project/user is driving the spend
+- The trend — is this a spike or steady growth?
+
+## The Operational Default: Use a Gateway
+
+Building and maintaining budget controls is not trivial. You need accurate cost tracking across multiple models and providers, proper atomicity to prevent race conditions, and alert infrastructure that actually works.
+
+The practical alternative is to use an LLM gateway that provides budget controls out of the box. You configure the limits through a UI or API; the gateway enforces them on every request. No infrastructure to maintain, no race conditions to worry about, and the controls work across every model and provider you use.

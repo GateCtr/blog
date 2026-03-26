@@ -1,11 +1,11 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { posts } from '../data/posts';
+import { getPostBySlug, getPosts } from '../lib/posts';
 import styles from './PostPage.module.css';
 
 export default function PostPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const post = posts.find(p => p.slug === slug);
+  const post = slug ? getPostBySlug(slug) : undefined;
 
   if (!post) {
     return (
@@ -16,7 +16,8 @@ export default function PostPage() {
     );
   }
 
-  const otherPosts = posts.filter(p => p.id !== post.id).slice(0, 3);
+  const { Component } = post;
+  const otherPosts = getPosts().filter(p => p.slug !== post.slug).slice(0, 3);
 
   return (
     <div className={styles.page}>
@@ -45,7 +46,7 @@ export default function PostPage() {
           <div className={styles.divider} />
 
           <div className={styles.content}>
-            {renderContent(post.content)}
+            <Component />
           </div>
 
           <div className={styles.ctaBox}>
@@ -64,7 +65,7 @@ export default function PostPage() {
             <h3 className={styles.moreTitle}>More Articles</h3>
             <div className={styles.moreGrid}>
               {otherPosts.map(p => (
-                <Link key={p.id} to={`/post/${p.slug}`} className={styles.moreCard}>
+                <Link key={p.slug} to={`/post/${p.slug}`} className={styles.moreCard}>
                   <span className={styles.moreCategory}>{p.category}</span>
                   <span className={styles.morePostTitle}>{p.title}</span>
                   <span className={styles.moreReadTime}>{p.readTime} min read</span>
@@ -81,75 +82,4 @@ export default function PostPage() {
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-}
-
-function renderContent(content: string) {
-  const lines = content.split('\n');
-  const elements: JSX.Element[] = [];
-  let i = 0;
-  let key = 0;
-
-  while (i < lines.length) {
-    const line = lines[i];
-
-    if (line.startsWith('```')) {
-      const codeLines: string[] = [];
-      i++;
-      while (i < lines.length && !lines[i].startsWith('```')) {
-        codeLines.push(lines[i]);
-        i++;
-      }
-      elements.push(
-        <pre key={key++}>
-          <code>{codeLines.join('\n')}</code>
-        </pre>
-      );
-    } else if (line.startsWith('## ')) {
-      elements.push(<h2 key={key++}>{line.slice(3)}</h2>);
-    } else if (line.startsWith('### ')) {
-      elements.push(<h3 key={key++}>{line.slice(4)}</h3>);
-    } else if (line.startsWith('- ')) {
-      const listItems: string[] = [];
-      while (i < lines.length && lines[i].startsWith('- ')) {
-        listItems.push(lines[i].slice(2));
-        i++;
-      }
-      elements.push(
-        <ul key={key++}>
-          {listItems.map((item, j) => (
-            <li key={j} dangerouslySetInnerHTML={{ __html: parseInline(item) }} />
-          ))}
-        </ul>
-      );
-      continue;
-    } else if (/^\d+\./.test(line)) {
-      const listItems: string[] = [];
-      while (i < lines.length && /^\d+\./.test(lines[i])) {
-        listItems.push(lines[i].replace(/^\d+\.\s*/, ''));
-        i++;
-      }
-      elements.push(
-        <ol key={key++}>
-          {listItems.map((item, j) => (
-            <li key={j} dangerouslySetInnerHTML={{ __html: parseInline(item) }} />
-          ))}
-        </ol>
-      );
-      continue;
-    } else if (line.trim() !== '') {
-      elements.push(
-        <p key={key++} dangerouslySetInnerHTML={{ __html: parseInline(line) }} />
-      );
-    }
-    i++;
-  }
-
-  return elements;
-}
-
-function parseInline(text: string): string {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
 }

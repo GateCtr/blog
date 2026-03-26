@@ -1,0 +1,71 @@
+---
+slug: context-window-optimization-guide
+title: The Complete Guide to Context Window Optimization
+excerpt: Context tokens are the single biggest driver of LLM spend. Learn how to audit your prompts, compress history, and trim tokens without degrading output quality.
+author: GateCtr Team
+date: "2026-03-17"
+category: Cost Optimization
+readTime: 8
+---
+
+The context window is where most LLM money is wasted. Every token you send — every character of your system prompt, every line of conversation history, every tool definition — gets charged at the input rate. And input rates are not cheap.
+
+The good news: context is also where the most optimization opportunity lives.
+
+## Understanding What You Are Sending
+
+Before you optimize, you need to measure. Most teams are surprised when they first audit their actual context content:
+
+- System prompts that have grown to thousands of tokens through iteration
+- Full conversation history when only the last few turns are relevant
+- Verbose JSON tool schemas that could be expressed in a fraction of the tokens
+- Debug information that was added temporarily and never removed
+
+A simple audit script can help you understand the breakdown:
+
+```python
+import tiktoken
+
+def audit_context(messages, model="gpt-4"):
+    enc = tiktoken.encoding_for_model(model)
+    for msg in messages:
+        tokens = len(enc.encode(msg["content"]))
+        print(f"{msg['role']}: {tokens} tokens")
+```
+
+## Trimming System Prompts
+
+System prompts grow over time. A prompt that started as 200 tokens gradually becomes 2,000 as teams add edge cases, examples, and instructions. Most of these additions are redundant.
+
+Techniques that work:
+
+**Remove example-heavy sections.** If you have three examples of how the model should format a response, one is usually enough. Examples are expensive — use them sparingly.
+
+**Use abbreviations consistently.** "You are a helpful assistant that specializes in technical support for enterprise software products" can become "You are a technical support specialist for enterprise software." Same meaning, fewer tokens.
+
+**Separate static and dynamic content.** Keep your system prompt static and inject dynamic context separately. This makes it easier to audit and optimize each part independently.
+
+## Managing Conversation History
+
+Sending the full conversation history is almost never necessary. A sliding window of the last 4–6 turns is sufficient for most conversational tasks.
+
+For longer conversations, use summarization: periodically compress older history into a brief summary and discard the original messages.
+
+```python
+def trim_history(messages, max_turns=6):
+    system = [m for m in messages if m["role"] == "system"]
+    conversation = [m for m in messages if m["role"] != "system"]
+    return system + conversation[-max_turns * 2:]
+```
+
+## Tool Schema Optimization
+
+If you use function calling or tool use, your schemas are likely consuming more tokens than necessary. OpenAI's function schemas in particular tend to be verbose.
+
+Strip out unnecessary description fields for obvious parameters. Use shorter parameter names where the meaning is unambiguous from context. Remove enum values that are never actually used.
+
+## Measuring Impact
+
+Always measure before and after. Track average input tokens per request over time. A good optimization effort should reduce this by 30–50% without any change in output quality.
+
+The easiest way to do this at scale is with a gateway that tracks token usage per request and applies context optimization automatically.

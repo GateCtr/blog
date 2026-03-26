@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { posts, categories } from '../data/posts';
+import { getPosts, getCategories } from '../lib/posts';
 import PostCard from '../components/PostCard';
 import styles from './Home.module.css';
+
+const posts = getPosts();
+const categories = getCategories();
 
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -93,7 +96,7 @@ export default function Home() {
               {rest.length > 0 && (
                 <div className={styles.grid}>
                   {rest.map(post => (
-                    <PostCard key={post.id} post={post} />
+                    <PostCard key={post.slug} post={post} />
                   ))}
                 </div>
               )}

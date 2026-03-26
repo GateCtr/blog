@@ -1,0 +1,57 @@
+---
+slug: choosing-between-llm-providers
+title: How to Choose Between OpenAI, Anthropic, and Google for Your Use Case
+excerpt: The major LLM providers have different strengths, pricing models, and latency profiles. Here is a practical framework for deciding which to use — and when to use multiple.
+author: GateCtr Team
+date: "2026-02-24"
+category: Model Routing
+readTime: 8
+---
+
+The LLM provider landscape has consolidated significantly over the past year, but meaningful differences remain between the major players. Choosing the right provider — or combination of providers — can have a significant impact on both cost and quality.
+
+## The Major Players
+
+**OpenAI** remains the default choice for most teams, primarily because of ecosystem familiarity and the breadth of the model family. GPT-4o is a strong general-purpose model. The o1 series excels at complex reasoning. The API is well-documented and the client libraries are mature.
+
+**Anthropic** has become the preferred choice for code generation and long-document tasks. Claude Sonnet and Opus consistently outperform comparable OpenAI models on coding benchmarks. The 200K context window makes Claude particularly strong for retrieval and long-form analysis.
+
+**Google** offers the best value for high-volume, lower-complexity tasks. Gemini Flash is extremely fast and inexpensive — often 10x cheaper than comparable OpenAI models at similar quality levels for simple tasks.
+
+## A Framework for Provider Selection
+
+Rather than choosing a single provider for everything, think about provider selection at the task level:
+
+**For code generation and review**: Anthropic Claude Sonnet or Opus. The code quality is consistently higher, and Claude is more reliable at following formatting and convention requirements.
+
+**For complex reasoning and analysis**: OpenAI o1 or GPT-4o. Strong general-purpose reasoning with excellent instruction following.
+
+**For high-volume classification and extraction**: Google Gemini Flash or OpenAI GPT-3.5. The cost difference at volume is significant and quality is adequate for structured tasks.
+
+**For long-document tasks**: Anthropic Claude. The extended context window is a genuine advantage for document analysis, legal review, and similar use cases.
+
+## The Multi-Provider Strategy
+
+The most cost-effective approach is to use multiple providers, routing each request to the best-fit model. This requires:
+
+1. Provider-agnostic API calls (the OpenAI-compatible format works across most providers)
+2. A routing layer that selects the provider and model for each request
+3. Fallback logic for provider outages
+
+```python
+ROUTING_TABLE = {
+    "code_generation": "anthropic/claude-3-5-sonnet",
+    "reasoning": "openai/o1-mini",
+    "classification": "google/gemini-flash-1.5",
+    "default": "openai/gpt-4o",
+}
+
+def route_to_model(task_type: str) -> str:
+    return ROUTING_TABLE.get(task_type, ROUTING_TABLE["default"])
+```
+
+## Cost at Scale
+
+At low volumes, provider choice matters less. At scale — millions of requests per month — the difference between providers can mean hundreds of thousands of dollars annually.
+
+The most practical way to implement multi-provider routing at scale is through an LLM gateway that handles provider selection, fallback, and cost tracking across all providers through a single API. Your code stays simple; the routing logic lives in the gateway.
