@@ -47,6 +47,16 @@ export default function PostPage() {
           <div className={styles.content}>
             {renderContent(post.content)}
           </div>
+
+          <div className={styles.ctaBox}>
+            <div className={styles.ctaBoxText}>
+              <div className={styles.ctaBoxTitle}>Cut your LLM costs by 40%</div>
+              <div className={styles.ctaBoxSub}>One endpoint swap. No code changes required.</div>
+            </div>
+            <a href="https://app.gatectr.com" className={styles.ctaBoxBtn} target="_blank" rel="noopener noreferrer">
+              Start free →
+            </a>
+          </div>
         </article>
 
         {otherPosts.length > 0 && (
@@ -83,7 +93,6 @@ function renderContent(content: string) {
     const line = lines[i];
 
     if (line.startsWith('```')) {
-      const lang = line.slice(3);
       const codeLines: string[] = [];
       i++;
       while (i < lines.length && !lines[i].startsWith('```')) {

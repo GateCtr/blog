@@ -12,7 +12,7 @@
 }
 
 .title {
-  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-size: clamp(2rem, 4vw, 2.5rem);
   font-weight: 800;
   letter-spacing: -0.03em;
   margin-bottom: 0.75rem;
@@ -20,9 +20,9 @@
 }
 
 .subtitle {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   color: var(--color-text-secondary);
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .content {
@@ -32,7 +32,7 @@
 }
 
 .section h2 {
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   font-weight: 700;
   letter-spacing: -0.015em;
   margin-bottom: 0.75rem;
@@ -48,4 +48,44 @@
 
 .section p:last-child {
   margin-bottom: 0;
+}
+
+.section strong {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.ctaBox {
+  padding: 2rem;
+  background: linear-gradient(135deg, var(--color-navy), #1a6aa8);
+  border-radius: var(--radius-md);
+  color: white;
+  text-align: center;
+}
+
+.ctaTitle {
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.ctaText {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin-bottom: 1.25rem;
+}
+
+.ctaBtn {
+  display: inline-block;
+  padding: 0.65rem 1.5rem;
+  background: var(--color-teal);
+  color: var(--color-navy);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: opacity var(--transition);
+}
+
+.ctaBtn:hover {
+  opacity: 0.9;
 }

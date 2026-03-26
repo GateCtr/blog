@@ -22,11 +22,12 @@ export default function Home() {
     <div className={styles.page}>
       <section className={styles.hero}>
         <div className={styles.heroContent}>
+          <div className={styles.heroBadge}>LLM Infrastructure</div>
           <h1 className={styles.heroTitle}>
-            Insights on <span className={styles.highlight}>Development</span>
+            The <span className={styles.highlight}>GateCtr</span> Blog
           </h1>
           <p className={styles.heroSub}>
-            Practical articles on React, TypeScript, CSS, and modern web development.
+            Practical insights on LLM cost optimization, model routing, and AI infrastructure for engineering teams.
           </p>
           <div className={styles.searchWrap}>
             <input
@@ -43,7 +44,7 @@ export default function Home() {
       <div className={styles.main}>
         <aside className={styles.sidebar}>
           <div className={styles.sidebarSection}>
-            <h3 className={styles.sidebarTitle}>Categories</h3>
+            <h3 className={styles.sidebarTitle}>Topics</h3>
             <ul className={styles.categoryList}>
               <li>
                 <button
@@ -67,12 +68,20 @@ export default function Home() {
               ))}
             </ul>
           </div>
+
+          <div className={styles.ctaBanner}>
+            <div className={styles.ctaBannerTitle}>Cut LLM costs by 40%</div>
+            <p className={styles.ctaBannerText}>One endpoint swap. Full control over tokens, budgets, and routing.</p>
+            <a href="https://app.gatectr.com" className={styles.ctaBannerBtn} target="_blank" rel="noopener noreferrer">
+              Start free →
+            </a>
+          </div>
         </aside>
 
         <div className={styles.content}>
           {filtered.length === 0 ? (
             <div className={styles.empty}>
-              <p>No articles found. Try a different search or category.</p>
+              <p>No articles found. Try a different search or topic.</p>
             </div>
           ) : (
             <>

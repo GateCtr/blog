@@ -42,13 +42,13 @@
 }
 
 .category {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-primary);
-  background: rgba(67, 97, 238, 0.08);
-  padding: 0.2rem 0.6rem;
+  letter-spacing: 0.06em;
+  color: var(--color-teal-dark);
+  background: var(--color-teal-light);
+  padding: 0.2rem 0.55rem;
   border-radius: 100px;
 }
 
@@ -57,7 +57,7 @@
 }
 
 .title {
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-size: clamp(1.75rem, 4vw, 2.35rem);
   font-weight: 800;
   line-height: 1.2;
   letter-spacing: -0.025em;
@@ -66,9 +66,9 @@
 }
 
 .excerpt {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   color: var(--color-text-secondary);
-  line-height: 1.65;
+  line-height: 1.7;
   margin-bottom: 1.5rem;
 }
 
@@ -82,7 +82,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  background: linear-gradient(135deg, var(--color-navy), var(--color-teal-dark));
   color: white;
   display: flex;
   align-items: center;
@@ -104,15 +104,15 @@
 }
 
 .content h2 {
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.015em;
-  margin: 2rem 0 0.75rem;
+  margin: 2.25rem 0 0.75rem;
   color: var(--color-text);
 }
 
 .content h3 {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 700;
   margin: 1.5rem 0 0.5rem;
   color: var(--color-text);
@@ -120,7 +120,7 @@
 
 .content p {
   font-size: 1rem;
-  line-height: 1.75;
+  line-height: 1.8;
   color: var(--color-text-secondary);
   margin-bottom: 1.25rem;
 }
@@ -144,22 +144,66 @@
 }
 
 .content a {
-  color: var(--color-primary);
+  color: var(--color-navy);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
+.ctaBox {
+  margin: 2.5rem 0;
+  padding: 1.75rem 2rem;
+  background: linear-gradient(135deg, var(--color-navy), #1a6aa8);
+  border-radius: var(--radius-md);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.ctaBoxText {
+  flex: 1;
+}
+
+.ctaBoxTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+
+.ctaBoxSub {
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
+.ctaBoxBtn {
+  display: inline-block;
+  padding: 0.6rem 1.25rem;
+  background: var(--color-teal);
+  color: var(--color-navy);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: opacity var(--transition);
+}
+
+.ctaBoxBtn:hover {
+  opacity: 0.9;
+}
+
 .more {
-  margin-top: 4rem;
+  margin-top: 3.5rem;
   padding-top: 2.5rem;
   border-top: 1px solid var(--color-border);
 }
 
 .moreTitle {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
   color: var(--color-text-muted);
   margin-bottom: 1rem;
 }
@@ -182,23 +226,23 @@
 
 .moreCard:hover {
   background: var(--color-bg-secondary);
-  border-color: rgba(67, 97, 238, 0.2);
+  border-color: rgba(0, 212, 232, 0.3);
 }
 
 .moreCategory {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--color-primary);
-  background: rgba(67, 97, 238, 0.08);
+  color: var(--color-teal-dark);
+  background: var(--color-teal-light);
   padding: 0.15rem 0.5rem;
   border-radius: 100px;
   flex-shrink: 0;
 }
 
 .morePostTitle {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 500;
   color: var(--color-text);
   flex: 1;
@@ -220,5 +264,5 @@
 .back {
   display: inline-block;
   margin-top: 1rem;
-  color: var(--color-primary);
+  color: var(--color-navy);
 }

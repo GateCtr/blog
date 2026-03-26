@@ -6,44 +6,58 @@ export default function About() {
       <div className={styles.container}>
         <header className={styles.header}>
           <h1 className={styles.title}>About GateCtr Blog</h1>
-          <p className={styles.subtitle}>A place for practical, in-depth writing about modern web development.</p>
+          <p className={styles.subtitle}>
+            Practical writing on LLM cost optimization, AI infrastructure, and model routing — for engineering teams building with AI.
+          </p>
         </header>
 
         <div className={styles.content}>
           <section className={styles.section}>
             <h2>What We Write About</h2>
             <p>
-              GateCtr Blog is focused on practical web development topics — the kind of articles that help
-              you build better software and grow as a developer. We cover React, TypeScript, CSS, performance,
-              tooling, and team workflows.
+              GateCtr Blog covers the operational side of running LLMs in production — the topics that matter
+              when you move from prototype to scale. Context optimization, model routing, budget controls,
+              observability, and provider selection.
             </p>
             <p>
-              Every article is written with real-world scenarios in mind. You will not find artificially
-              simple examples here — we tackle the nuances and edge cases that actually matter when building
-              production software.
+              Every article is written for engineers and technical leads who are responsible for LLM
+              infrastructure and want to reduce costs without sacrificing output quality.
             </p>
           </section>
 
           <section className={styles.section}>
-            <h2>Our Philosophy</h2>
+            <h2>About GateCtr</h2>
             <p>
-              Good software is a craft. It takes time, practice, and a willingness to keep learning. We
-              believe that sharing knowledge openly makes the entire ecosystem better, and that is the
-              spirit behind everything we publish.
+              GateCtr is an LLM gateway that sits between your application and model providers. One endpoint
+              swap gives you full control over tokens, budgets, and routing — without changing a line of your
+              application code.
             </p>
             <p>
-              We favour clarity over cleverness, simplicity over complexity, and practical guidance over
-              theoretical abstraction.
+              Teams using GateCtr typically reduce their LLM spend by 40% in the first week, through
+              context optimization and intelligent model routing.
             </p>
           </section>
 
           <section className={styles.section}>
-            <h2>Stay in Touch</h2>
+            <h2>The Three Products</h2>
             <p>
-              Follow the blog for new articles on React, TypeScript, performance, and everything in between.
-              We publish regularly and aim for quality over quantity.
+              <strong>gatectr.com</strong> — the main product site with pricing, features, and access requests.
+            </p>
+            <p>
+              <strong>app.gatectr.com</strong> — the dashboard where you manage routing rules, budget limits, and usage analytics.
+            </p>
+            <p>
+              <strong>docs.gatectr.com</strong> — integration guides, API reference, and configuration documentation.
             </p>
           </section>
+
+          <div className={styles.ctaBox}>
+            <h3 className={styles.ctaTitle}>Cut LLM costs by 40%</h3>
+            <p className={styles.ctaText}>One endpoint swap. Full control over tokens, budgets, and routing.</p>
+            <a href="https://app.gatectr.com" className={styles.ctaBtn} target="_blank" rel="noopener noreferrer">
+              Request access →
+            </a>
+          </div>
         </div>
       </div>
     </div>

@@ -4,9 +4,14 @@ export default function Footer() {
   return (
     <footer className={styles.footer}>
       <div className={styles.container}>
-        <p className={styles.text}>
-          © {new Date().getFullYear()} GateCtr. Built with React &amp; Vite.
-        </p>
+        <div className={styles.links}>
+          <a href="https://gatectr.com" target="_blank" rel="noopener noreferrer" className={styles.link}>gatectr.com</a>
+          <span className={styles.sep}>·</span>
+          <a href="https://app.gatectr.com" target="_blank" rel="noopener noreferrer" className={styles.link}>app.gatectr.com</a>
+          <span className={styles.sep}>·</span>
+          <a href="https://docs.gatectr.com" target="_blank" rel="noopener noreferrer" className={styles.link}>docs.gatectr.com</a>
+        </div>
+        <p className={styles.copy}>© {new Date().getFullYear()} GateCtr. Cut LLM costs by 40%.</p>
       </div>
     </footer>
   );

@@ -9,12 +9,12 @@
 .card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  border-color: rgba(67, 97, 238, 0.2);
+  border-color: rgba(0, 212, 232, 0.3);
 }
 
 .card.featured {
-  border-color: rgba(67, 97, 238, 0.15);
-  background: linear-gradient(135deg, rgba(67, 97, 238, 0.03), rgba(247, 37, 133, 0.02));
+  border-color: rgba(27, 79, 130, 0.12);
+  background: linear-gradient(135deg, rgba(27, 79, 130, 0.025), rgba(0, 212, 232, 0.02));
 }
 
 .cardLink {
@@ -38,13 +38,13 @@
 }
 
 .category {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-primary);
-  background: rgba(67, 97, 238, 0.08);
-  padding: 0.2rem 0.6rem;
+  letter-spacing: 0.06em;
+  color: var(--color-teal-dark);
+  background: var(--color-teal-light);
+  padding: 0.2rem 0.55rem;
   border-radius: 100px;
 }
 
@@ -59,16 +59,16 @@
 }
 
 .title {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 700;
   line-height: 1.35;
   color: var(--color-text);
   margin-bottom: 0.6rem;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 
 .featured .title {
-  font-size: 1.5rem;
+  font-size: 1.45rem;
 }
 
 .excerpt {
@@ -91,16 +91,16 @@
 .author {
   font-size: 0.8rem;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
 }
 
 .readMore {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  color: var(--color-primary);
-  transition: gap var(--transition);
+  color: var(--color-navy);
+  transition: opacity var(--transition);
 }
 
 .card:hover .readMore {
-  opacity: 0.8;
+  opacity: 0.75;
 }
