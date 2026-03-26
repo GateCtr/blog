@@ -21,6 +21,7 @@ interface ArticleMeta {
   lang: 'en' | 'fr';
   date: string;
   category: string;
+  publishAt?: string;
 }
 
 export default function AdminDashboard() {
@@ -170,7 +171,7 @@ export default function AdminDashboard() {
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>
-            Articles publiés ({articles.length})
+            Articles ({articles.length})
           </h2>
           <div className={styles.tabs}>
             <button
@@ -205,9 +206,17 @@ export default function AdminDashboard() {
               <tbody>
                 {articles.filter(a => a.lang === langTab).map(a => {
                   const key = `${a.lang}-${a.slug}`;
+                  const isScheduled = a.publishAt && new Date(a.publishAt).getTime() > Date.now();
                   return (
                     <tr key={key}>
-                      <td className={styles.titleCell}>{a.title}</td>
+                      <td className={styles.titleCell}>
+                        {a.title}
+                        {isScheduled && (
+                          <span className={styles.scheduledBadge}>
+                            🕐 {new Date(a.publishAt!).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </td>
                       <td>{a.category}</td>
                       <td className={styles.dateCell}>{a.date}</td>
                       <td className={styles.actionsCell}>

@@ -24,11 +24,21 @@ function buildPosts(modules: Record<string, MDXModule>): PostEntry[] {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
-const enPosts = buildPosts(enModules);
-const frPosts = buildPosts(frModules);
+const allEnPosts = buildPosts(enModules);
+const allFrPosts = buildPosts(frModules);
+
+function isPublished(post: PostEntry): boolean {
+  if (!post.publishAt) return true;
+  return new Date(post.publishAt).getTime() <= Date.now();
+}
 
 export function getPosts(lang: Lang = 'en'): PostEntry[] {
-  return lang === 'fr' ? frPosts : enPosts;
+  const all = lang === 'fr' ? allFrPosts : allEnPosts;
+  return all.filter(isPublished);
+}
+
+export function getAllPosts(lang: Lang = 'en'): PostEntry[] {
+  return lang === 'fr' ? allFrPosts : allEnPosts;
 }
 
 export function getPostBySlug(slug: string, lang: Lang = 'en'): PostEntry | undefined {

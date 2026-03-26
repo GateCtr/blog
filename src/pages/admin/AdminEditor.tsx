@@ -23,6 +23,7 @@ interface ArticlePayload {
     date: string;
     category: string;
     readTime: number;
+    publishAt?: string;
   };
   body: string;
   lang: 'en' | 'fr';
@@ -56,6 +57,7 @@ export default function AdminEditor() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [category, setCategory] = useState('');
   const [readTime, setReadTime] = useState('5');
+  const [publishAt, setPublishAt] = useState('');
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingArticle, setLoadingArticle] = useState(isEditMode);
@@ -99,6 +101,7 @@ export default function AdminEditor() {
         setDate(fm.date ?? new Date().toISOString().slice(0, 10));
         setCategory(fm.category ?? '');
         setReadTime(String(fm.readTime ?? 5));
+        setPublishAt(fm.publishAt ?? '');
         setBody(data.body ?? '');
       })
       .catch((err: unknown) => {
@@ -144,7 +147,11 @@ export default function AdminEditor() {
         body: JSON.stringify({
           lang,
           slug,
-          frontmatter: { slug, title, excerpt, author, date, category, readTime: parseInt(readTime, 10) },
+          frontmatter: {
+            slug, title, excerpt, author, date, category,
+            readTime: parseInt(readTime, 10),
+            ...(publishAt ? { publishAt } : {}),
+          },
           body,
         }),
       });
@@ -153,7 +160,13 @@ export default function AdminEditor() {
         setError(d.error ?? 'Erreur lors de la publication.');
         return;
       }
-      showToast(isEditMode ? 'Article mis à jour avec succès.' : 'Article publié avec succès.', 'success');
+      const isScheduled = publishAt && new Date(publishAt).getTime() > Date.now();
+      const successMsg = isEditMode
+        ? 'Article mis à jour avec succès.'
+        : isScheduled
+          ? `Article programmé pour le ${new Date(publishAt).toLocaleString('fr-FR')}.`
+          : 'Article publié avec succès.';
+      showToast(successMsg, 'success');
       setTimeout(() => navigate('/admin/dashboard'), 1800);
     } catch {
       setError('Erreur réseau.');
@@ -293,6 +306,33 @@ export default function AdminEditor() {
                 required
               />
             </div>
+            <div className={styles.field}>
+              <label className={styles.label}>
+                Programmer pour
+                <span className={styles.labelHint}> (optionnel)</span>
+              </label>
+              <div className={styles.slugRow}>
+                <input
+                  type="datetime-local"
+                  className={styles.input}
+                  value={publishAt}
+                  onChange={e => setPublishAt(e.target.value)}
+                />
+                {publishAt && (
+                  <button
+                    type="button"
+                    className={styles.cancelBtn}
+                    style={{ padding: '0 12px', fontSize: '0.8rem' }}
+                    onClick={() => setPublishAt('')}
+                  >
+                    Effacer
+                  </button>
+                )}
+              </div>
+              <p className={styles.hint}>
+                Laisser vide pour publier immédiatement. Si une date future est choisie, l'article n'apparaîtra pas sur le blog avant cette date.
+              </p>
+            </div>
           </div>
 
           <div className={styles.field}>
@@ -318,7 +358,12 @@ export default function AdminEditor() {
               Annuler
             </button>
             <button type="submit" className={styles.submitBtn} disabled={loading}>
-              {loading ? 'Publication…' : isEditMode ? 'Mettre à jour' : "Publier l'article"}
+              {loading
+                ? (publishAt && new Date(publishAt).getTime() > Date.now() ? 'Programmation…' : 'Publication…')
+                : isEditMode
+                  ? 'Mettre à jour'
+                  : (publishAt && new Date(publishAt).getTime() > Date.now() ? 'Programmer l\'article' : "Publier l'article")
+              }
             </button>
           </div>
         </form>

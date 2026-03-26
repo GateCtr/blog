@@ -79,6 +79,7 @@ interface ArticleFrontmatter {
   date: string;
   category: string;
   readTime: number;
+  publishAt?: string;
 }
 
 function parseFrontmatter(content: string): ArticleFrontmatter | null {
