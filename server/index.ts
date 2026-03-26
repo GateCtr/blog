@@ -264,8 +264,25 @@ app.post('/api/track', (req, res) => {
   res.json({ ok: true });
 });
 
-app.listen(PORT, () => {
-  console.log(`[admin-api] Listening on http://localhost:${PORT}`);
+app.get('/', (_req, res) => {
+  res.json({ ok: true, service: 'gatectr-api' });
+});
+
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('[admin-api] Unhandled error:', err.message);
+  res.status(500).json({ error: 'Erreur interne du serveur.' });
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[admin-api] uncaughtException:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[admin-api] unhandledRejection:', reason);
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[admin-api] Listening on 0.0.0.0:${PORT}`);
   console.log(`[admin-api] ADMIN_EMAIL: ${EFFECTIVE_EMAIL}`);
   console.log(`[admin-api] JWT_SECRET : ${JWT_SECRET ? 'set via env' : '(default — set JWT_SECRET in env for production)'}`);
 });
