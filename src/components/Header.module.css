@@ -30,8 +30,8 @@
   letter-spacing: -0.01em;
 }
 
-.logoCtr {
-  color: var(--color-navy);
+.logoC {
+  color: var(--color-cyan);
 }
 
 .logoBadge {

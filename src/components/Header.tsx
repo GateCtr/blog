@@ -18,7 +18,7 @@ export default function Header() {
       <div className={styles.container}>
         <Link to="/" className={styles.logo}>
           <GateCtrLogo />
-          <span className={styles.logoText}>Gate<span className={styles.logoCtr}>Ctr</span></span>
+          <span className={styles.logoText}>Gate<span className={styles.logoC}>C</span>tr</span>
           <span className={styles.logoBadge}>Blog</span>
         </Link>
         <nav className={styles.nav}>
