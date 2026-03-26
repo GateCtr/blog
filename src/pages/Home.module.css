@@ -95,6 +95,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 1.25rem;
+  overflow: hidden;
 }
 
 .sidebarTitle {
@@ -236,6 +237,8 @@
   .sidebar {
     position: static;
     order: 2;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .content {
