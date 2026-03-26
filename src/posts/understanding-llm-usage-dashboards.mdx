@@ -1,56 +1,183 @@
 ---
 slug: understanding-llm-usage-dashboards
-title: What a Good LLM Usage Dashboard Actually Shows You
-excerpt: Token counts alone are not enough. Here is what meaningful LLM observability looks like — and the questions a good dashboard should help you answer.
+title: What a Good LLM Usage Dashboard Actually Tells You
+excerpt: Token counts and monthly totals are not enough for LLM observability. Here are the six metrics that matter and what good per-request data looks like in practice.
 author: GateCtr Team
 date: "2026-03-01"
 category: Operations
-readTime: 6
+readTime: 8
 ---
 
-Most LLM monitoring tools show you token counts and costs. That is a start, but it is barely scratching the surface of what you actually need to know about your LLM usage.
+Most LLM monitoring tools show you a cost total and a request count. That tells you almost nothing useful. It does not tell you which feature is expensive, which team is over budget, whether costs are trending up, or whether an agent went rogue at 2 AM.
 
-A genuinely useful usage dashboard helps you answer specific operational questions. Here is what those questions are and what data you need to answer them.
+Real LLM observability means being able to answer specific operational questions on demand, without digging through logs. This article defines what those questions are, what data you need to answer them, and what good per-request logging looks like in practice.
 
-## Question 1: Where Is the Money Going?
+## The Six Metrics That Actually Matter
 
-The most fundamental question. The answer needs to be broken down by:
+### 1. Cost per request by endpoint or feature
 
-- **Model**: Which models are you spending the most on? This tells you where routing improvements would have the most impact.
-- **Team or project**: Which teams or applications are the biggest consumers? This helps with budgeting and accountability.
-- **Request type**: Are you spending more on input tokens or output tokens? This affects your optimization strategy.
+**Why it matters**: Knowing that you spent $8,000 last month tells you nothing about where to optimize. Knowing that the document-analysis feature costs $0.12 per request while the classification feature costs $0.003 per request tells you exactly where to focus.
 
-A pie chart of total spend by model is more useful than a single monthly total.
+**How to measure it**: Tag every LLM request with the feature or endpoint that triggered it. Aggregate average cost by tag over weekly windows.
 
-## Question 2: Is Cost Per Request Changing?
+### 2. Average input tokens per request, trended over time
 
-Absolute cost matters, but cost per request matters more for understanding efficiency. If your total spend doubled but your request volume tripled, your per-request cost actually improved.
+**Why it matters**: This is the clearest signal of prompt bloat. If average input tokens are growing week-over-week, your system prompts or conversation history are accumulating unchecked. A 10% monthly increase in average input tokens compounds into a 120% increase in a year.
 
-Track average tokens per request over time. An upward trend here often indicates prompt bloat or conversation history accumulation — both fixable with the right tooling.
+**How to measure it**: Track average input tokens per request alongside a rolling 7-day average. An upward trend here warrants investigation before it becomes expensive.
 
-## Question 3: Are There Anomalies?
+### 3. Model distribution
 
-Unusual spikes in cost or request volume are often the first sign of a problem — a runaway agent, a misconfigured tool, or a sudden influx of traffic.
+**Why it matters**: If you have model routing configured, model distribution shows whether the router is working correctly. If 90% of your requests are still hitting GPT-4o when you expected 60% to route to cheaper models, something is misconfigured.
 
-Good dashboards surface anomalies proactively. You should not need to stare at charts to notice that something went wrong at 2 AM.
+**How to measure it**: Count requests by model per hour. If the distribution shifts suddenly, investigate — it usually indicates a routing policy change or a provider issue triggering fallbacks.
 
-## Question 4: Which Users or Sessions Are the Most Expensive?
+### 4. Cost per user or session (for user-facing products)
 
-If your product allows end users to trigger LLM calls, some users will be dramatically more expensive than others. A small number of heavy users often accounts for a disproportionate share of total cost.
+**Why it matters**: In B2C products, user cost distribution is almost never uniform. The top 5% of users by LLM usage typically account for 40–60% of total cost. Understanding this distribution is essential for product decisions around usage limits and pricing.
 
-Understanding this distribution helps you make better product decisions — and identify candidates for usage limits.
+**How to measure it**: Attach a user or session identifier to every LLM request. Build a histogram of cost per user per month. Look at the 90th and 99th percentiles, not just the mean.
 
-## What Good LLM Observability Looks Like
+### 5. Request latency by model and provider
 
-The best LLM dashboards are built on per-request logs, not aggregated metrics. Each request should capture:
+**Why it matters**: Latency affects product quality. If a specific model or provider is slower than your SLA, you need to know before users complain. Latency also varies significantly across models — a routing decision that saves cost but doubles latency may not be acceptable.
 
-- Model used
-- Input tokens, output tokens, total cost
-- Team, project, user identifier
-- Request type or tag
-- Latency
-- Whether the request succeeded
+**How to measure it**: Record the time from request send to response received for every LLM call. Track p50, p95, and p99 by model.
 
-With per-request data, you can answer any question. With pre-aggregated metrics, you are limited to the questions someone anticipated when building the dashboard.
+### 6. Error rate and failure types
 
-The practical implication: choose observability tools that give you access to raw request data, not just pre-built charts.
+**Why it matters**: LLM API errors are not uniform. Rate limit errors signal you need to adjust request velocity or upgrade your plan. Context length errors signal prompt bloat that needs immediate attention. Provider outages signal you need multi-provider fallback.
+
+**How to measure it**: Log every error with its type, the model, and the request metadata. Alert on error rate spikes — a sudden increase in rate limit errors often precedes a cost spike.
+
+## What Good Per-Request Logging Looks Like
+
+The foundation of all of the above metrics is per-request logging. Aggregated dashboards are useful for trends; per-request logs let you answer any question, including ones you have not thought of yet.
+
+Here is what each log record should capture:
+
+```json
+{
+  "request_id": "req_01JKXZ8P4QNMKR7T9WFCYDG3E",
+  "timestamp": "2026-03-01T14:23:07.412Z",
+  "duration_ms": 1847,
+
+  "model": {
+    "requested": "auto",
+    "selected": "gpt-4o-mini",
+    "provider": "openai",
+    "routing_reason": "classified as simple extraction task"
+  },
+
+  "tokens": {
+    "input": 843,
+    "input_before_optimization": 1420,
+    "output": 127,
+    "total": 970
+  },
+
+  "cost": {
+    "input_usd": 0.000127,
+    "output_usd": 0.0000762,
+    "total_usd": 0.000203,
+    "savings_usd": 0.000286
+  },
+
+  "context": {
+    "feature": "support-ticket-classify",
+    "team_id": "team-support-eng",
+    "project_id": "proj-customer-portal",
+    "user_id": "usr_7f3k9p2m",
+    "session_id": "sess_4xr2m8nt"
+  },
+
+  "outcome": {
+    "status": "success",
+    "finish_reason": "stop",
+    "cached": false
+  }
+}
+```
+
+With this record, you can answer any question: What did user `usr_7f3k9p2m` cost yesterday? Which feature has the highest average token count? Which team is closest to their budget? What percentage of requests are being optimized, and by how much?
+
+Without per-request logs — relying only on pre-aggregated metrics — you are limited to the questions someone anticipated when building the dashboard.
+
+## Anomaly Detection: The Operational Safety Net
+
+The most operationally important use of LLM observability is anomaly detection. Cost and volume spikes are almost always the first signal of a production problem.
+
+Common anomalies and their causes:
+
+| Anomaly | Likely cause |
+|---------|-------------|
+| 10x spike in request volume | Infinite agent loop, retry storm, traffic spike |
+| 3x increase in average input tokens | New code path with bloated context, RAG returning too many chunks |
+| Sudden shift in model distribution | Routing policy change, provider outage causing fallbacks |
+| High error rate on specific model | Provider degradation, rate limit hit |
+| Single user driving 50% of daily cost | Runaway session, abusive user |
+
+A good observability system surfaces these automatically. You should not need to check a dashboard to discover that something went wrong overnight — the dashboard should tell you.
+
+Effective anomaly alerting is based on rolling baselines, not fixed thresholds. Alert when current request volume is more than 3 standard deviations above the 7-day rolling average — not when it crosses an arbitrary number that becomes stale as your product grows.
+
+```python
+import statistics
+
+def detect_anomaly(
+    current_value: float,
+    historical_values: list[float],
+    sensitivity: float = 3.0
+) -> tuple[bool, float]:
+    """
+    Detect anomalies using z-score against rolling baseline.
+    Returns (is_anomaly, z_score).
+    """
+    if len(historical_values) < 7:
+        return False, 0.0  # Not enough history
+
+    mean = statistics.mean(historical_values)
+    stdev = statistics.stdev(historical_values)
+
+    if stdev == 0:
+        return False, 0.0
+
+    z_score = (current_value - mean) / stdev
+    return abs(z_score) > sensitivity, z_score
+```
+
+## How GateCtr's Analytics Dashboard Works
+
+GateCtr captures all six of the metrics above automatically for every request that passes through the gateway. No instrumentation required in your application code.
+
+The dashboard gives you:
+
+- **Real-time cost breakdown** by model, team, project, and feature tag
+- **Token trend charts** showing input and output token averages over time
+- **Model distribution** with routing reason visibility
+- **Per-user cost tables** sortable by spend, request count, or average cost
+- **Latency percentiles** by model and provider
+- **Anomaly alerts** delivered via webhook, Slack, or email
+
+The underlying data is also queryable via API, so you can pull it into your own data warehouse or BI tool if needed.
+
+```bash
+# Query cost breakdown by feature for the last 7 days
+curl "https://api.gatectr.com/v1/analytics/costs" \
+  -H "Authorization: Bearer $GATECTR_API_KEY" \
+  -G \
+  --data-urlencode "group_by=feature" \
+  --data-urlencode "period=7d"
+```
+
+[See the full analytics API reference →](https://docs.gatectr.com) | [Start free →](https://app.gatectr.com/sign-up)
+
+## Frequently Asked Questions
+
+### How long should I retain per-request logs?
+
+At a minimum, 90 days. This gives you three billing cycles of data for budget analysis and enough history for meaningful trend analysis. For compliance-sensitive applications, 1 year is common. Storage costs for log data are negligible compared to the LLM costs you are tracking.
+
+### Do I need a dedicated LLM observability tool, or can I use a general APM?
+
+General APM tools (Datadog, New Relic, etc.) can capture LLM metrics if you instrument them correctly, but they were not designed for token-level cost analysis. A dedicated tool — whether built into your gateway or standalone — will give you better out-of-the-box visibility with less instrumentation effort. The key requirement is per-request data with token counts and cost estimates, not just latency and error rate.

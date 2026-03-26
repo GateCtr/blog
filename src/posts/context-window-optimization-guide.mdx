@@ -1,71 +1,281 @@
 ---
 slug: context-window-optimization-guide
-title: The Complete Guide to Context Window Optimization
-excerpt: Context tokens are the single biggest driver of LLM spend. Learn how to audit your prompts, compress history, and trim tokens without degrading output quality.
+title: The Complete Guide to Context Window Optimization for LLMs
+excerpt: Context tokens are the biggest driver of LLM spend. Learn how to audit, compress, and automate prompt optimization — and cut input token costs by 30–50%.
 author: GateCtr Team
 date: "2026-03-17"
 category: Cost Optimization
-readTime: 8
+readTime: 10
 ---
 
-The context window is where most LLM money is wasted. Every token you send — every character of your system prompt, every line of conversation history, every tool definition — gets charged at the input rate. And input rates are not cheap.
+The context window is where most LLM money is wasted — and where the most optimization opportunity lives. Every token you send to a model is billed at the input rate, on every single request. System prompts, conversation history, tool schemas, retrieved documents: all of it costs money, every time.
 
-The good news: context is also where the most optimization opportunity lives.
+For teams running LLMs at production scale, context optimization is often the single highest-leverage improvement available. This guide gives you the tools to measure what you are actually sending, reduce it systematically, and automate the process so it stays optimized as your product evolves.
 
-## Understanding What You Are Sending
+## Understanding Token Costs
 
-Before you optimize, you need to measure. Most teams are surprised when they first audit their actual context content:
+Before optimizing, it helps to understand how token costs compound. Consider a typical production application:
 
-- System prompts that have grown to thousands of tokens through iteration
-- Full conversation history when only the last few turns are relevant
-- Verbose JSON tool schemas that could be expressed in a fraction of the tokens
-- Debug information that was added temporarily and never removed
+- **System prompt**: 800 tokens (it started as 200 and grew)
+- **Retrieved context** (RAG): 1,200 tokens
+- **Conversation history**: 1,800 tokens (last 10 turns)
+- **User message**: 150 tokens
+- **Tool schemas**: 400 tokens
 
-A simple audit script can help you understand the breakdown:
+**Total input: 4,350 tokens per request.**
+
+At GPT-4o pricing ($5 per million input tokens), that is $0.02175 per request. At 100,000 requests per day, that is **$2,175 per day** in input costs alone.
+
+Now reduce average input tokens by 40% — a conservative estimate for a well-optimized system:
+
+- Trimmed system prompt: 400 tokens
+- Compressed context: 900 tokens
+- Sliding history window (4 turns): 600 tokens
+- User message: 150 tokens
+- Pruned schemas: 200 tokens
+
+**Optimized total: 2,250 tokens.** At the same volume, daily input cost drops to **$1,125** — saving over $1,000 per day without changing the model or the application logic.
+
+## Step 1: Audit What You Are Actually Sending
+
+Most teams have never measured their context breakdown. The first step is to add instrumentation so you understand where your tokens are going.
 
 ```python
 import tiktoken
+from typing import Any
 
-def audit_context(messages, model="gpt-4"):
+def audit_context(messages: list[dict], tools: list[dict] | None = None, model: str = "gpt-4o") -> dict:
+    """
+    Audit the token usage of a request before sending it.
+    Returns a breakdown by component.
+    """
     enc = tiktoken.encoding_for_model(model)
+    breakdown = {}
+    total = 0
+
     for msg in messages:
-        tokens = len(enc.encode(msg["content"]))
-        print(f"{msg['role']}: {tokens} tokens")
+        role = msg["role"]
+        content = msg.get("content", "")
+        tokens = len(enc.encode(content))
+        breakdown[f"{role}_{len(breakdown)}"] = tokens
+        total += tokens
+
+    if tools:
+        import json
+        tool_str = json.dumps(tools)
+        tool_tokens = len(enc.encode(tool_str))
+        breakdown["tools"] = tool_tokens
+        total += tool_tokens
+
+    breakdown["total"] = total
+    return breakdown
+
+# Example output:
+# {
+#   "system_0": 823,
+#   "user_1": 142,
+#   "assistant_2": 318,
+#   "user_3": 189,
+#   "tools": 412,
+#   "total": 1884
+# }
 ```
 
-## Trimming System Prompts
+Run this on a sample of real production requests for one week. The results are almost always surprising — system prompts and tool schemas typically account for far more tokens than developers expect.
 
-System prompts grow over time. A prompt that started as 200 tokens gradually becomes 2,000 as teams add edge cases, examples, and instructions. Most of these additions are redundant.
+## Step 2: Trim Your System Prompt
 
-Techniques that work:
+System prompts grow organically over time. A prompt that started as 200 tokens gradually becomes 1,500+ through iteration. Most additions are redundant.
 
-**Remove example-heavy sections.** If you have three examples of how the model should format a response, one is usually enough. Examples are expensive — use them sparingly.
+### Before and After: Verbosity Reduction
 
-**Use abbreviations consistently.** "You are a helpful assistant that specializes in technical support for enterprise software products" can become "You are a technical support specialist for enterprise software." Same meaning, fewer tokens.
+**Before** (247 tokens):
+```
+You are a helpful, friendly, and knowledgeable customer support assistant 
+that specializes in providing accurate and comprehensive technical support 
+for enterprise software products. Your goal is to help users resolve their 
+issues as quickly and effectively as possible. You should always be polite, 
+professional, and empathetic. When you don't know something, you should 
+acknowledge that honestly and guide the user to appropriate resources.
+```
 
-**Separate static and dynamic content.** Keep your system prompt static and inject dynamic context separately. This makes it easier to audit and optimize each part independently.
+**After** (61 tokens):
+```
+You are a technical support agent for enterprise software. Be concise and 
+accurate. If unsure, say so and point to documentation.
+```
 
-## Managing Conversation History
+Same meaning. 75% fewer tokens. This pattern repeats throughout most system prompts.
 
-Sending the full conversation history is almost never necessary. A sliding window of the last 4–6 turns is sufficient for most conversational tasks.
+### Techniques That Work
 
-For longer conversations, use summarization: periodically compress older history into a brief summary and discard the original messages.
+**Remove redundant examples.** Three few-shot examples where one would do is a common pattern. Each example typically costs 200–500 tokens. Benchmark with one example before adding more.
+
+**Separate static and dynamic content.** Keep your core instructions in the system message. Inject task-specific context separately via the user message. This makes both parts easier to optimize independently.
+
+**Trim unused instructions.** Review every instruction in your system prompt and ask: does the model actually follow this? Would removing it change the output? Many instructions in production prompts are defensive additions from early development that the model already handles correctly by default.
+
+## Step 3: Manage Conversation History
+
+Sending the full conversation history is almost never necessary. Most conversational tasks only require the last 4–6 turns for coherence. History older than that is usually irrelevant to the current request.
 
 ```python
-def trim_history(messages, max_turns=6):
-    system = [m for m in messages if m["role"] == "system"]
+def trim_history(
+    messages: list[dict],
+    max_turns: int = 5,
+    preserve_system: bool = True
+) -> list[dict]:
+    """
+    Trim conversation history to the last N turns.
+    Preserves the system message and the most recent user-assistant pairs.
+    """
+    system_msgs = [m for m in messages if m["role"] == "system"]
     conversation = [m for m in messages if m["role"] != "system"]
-    return system + conversation[-max_turns * 2:]
+
+    # Keep the last max_turns user-assistant pairs
+    trimmed = conversation[-(max_turns * 2):]
+    
+    if preserve_system:
+        return system_msgs + trimmed
+    return trimmed
+
+
+def summarize_old_history(
+    messages: list[dict],
+    summarizer_model: str = "gpt-4o-mini",
+    keep_recent_turns: int = 4
+) -> list[dict]:
+    """
+    For long conversations: compress older history into a summary message.
+    Uses a cheap model for the summarization step.
+    """
+    import openai
+    client = openai.OpenAI()
+
+    system_msgs = [m for m in messages if m["role"] == "system"]
+    conversation = [m for m in messages if m["role"] != "system"]
+
+    if len(conversation) <= keep_recent_turns * 2:
+        return messages  # Not long enough to warrant summarization
+
+    to_summarize = conversation[:-(keep_recent_turns * 2)]
+    recent = conversation[-(keep_recent_turns * 2):]
+
+    history_text = "\n".join([f"{m['role']}: {m['content']}" for m in to_summarize])
+    
+    summary_response = client.chat.completions.create(
+        model=summarizer_model,
+        messages=[{
+            "role": "user",
+            "content": f"Summarize this conversation history in 2-3 sentences:\n\n{history_text}"
+        }]
+    )
+    summary = summary_response.choices[0].message.content
+
+    summary_message = {
+        "role": "system",
+        "content": f"[Earlier conversation summary: {summary}]"
+    }
+
+    return system_msgs + [summary_message] + recent
 ```
 
-## Tool Schema Optimization
+Switching from full history to a 5-turn sliding window typically reduces conversation history token usage by 60–80% for mature conversations.
 
-If you use function calling or tool use, your schemas are likely consuming more tokens than necessary. OpenAI's function schemas in particular tend to be verbose.
+## Step 4: Optimize Tool Schemas
 
-Strip out unnecessary description fields for obvious parameters. Use shorter parameter names where the meaning is unambiguous from context. Remove enum values that are never actually used.
+If you use function calling or tool use, your schemas are consuming significant tokens — often 300–600 tokens per tool per request. Most tool schemas are more verbose than necessary.
 
-## Measuring Impact
+**Before** (~180 tokens for this function):
+```json
+{
+  "type": "function",
+  "function": {
+    "name": "get_customer_account",
+    "description": "Retrieves complete customer account information including profile data, subscription status, billing history, and usage statistics from the customer database",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "customer_id": {
+          "type": "string",
+          "description": "The unique identifier for the customer, typically in the format CUST-XXXXXXXX"
+        },
+        "include_billing": {
+          "type": "boolean",
+          "description": "Whether to include detailed billing history in the response. Set to true if billing information is needed, false otherwise. Defaults to false."
+        }
+      },
+      "required": ["customer_id"]
+    }
+  }
+}
+```
 
-Always measure before and after. Track average input tokens per request over time. A good optimization effort should reduce this by 30–50% without any change in output quality.
+**After** (~75 tokens):
+```json
+{
+  "type": "function",
+  "function": {
+    "name": "get_customer_account",
+    "description": "Get customer account data",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "customer_id": {"type": "string"},
+        "include_billing": {"type": "boolean"}
+      },
+      "required": ["customer_id"]
+    }
+  }
+}
+```
 
-The easiest way to do this at scale is with a gateway that tracks token usage per request and applies context optimization automatically.
+The model does not need verbose descriptions to call functions correctly. Remove descriptions for self-explanatory parameters. Keep them only when the parameter's purpose or format is genuinely ambiguous.
+
+## Step 5: Automate Context Optimization
+
+Manual prompt optimization produces one-time improvements. Automated context optimization produces continuous improvements as your product evolves.
+
+GateCtr's Context Optimizer runs automatically on every request that passes through the gateway. It applies context compression, history trimming, and schema pruning before the request reaches the model — without any changes to your application code.
+
+```bash
+# Before: your application sends full context
+# Input tokens: 4,350 | Cost per request: $0.02175
+
+curl https://api.gatectr.com/v1/chat/completions \
+  -H "Authorization: Bearer $GATECTR_API_KEY" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [...],  # Your unoptimized messages
+    "tools": [...]       # Your verbose schemas
+  }'
+
+# GateCtr automatically trims the context before forwarding
+# Optimized input tokens: 2,250 | Cost per request: $0.01125
+# Savings: 48% on this request — zero code changes required
+```
+
+The optimization runs transparently. Your application receives the same response format. The usage dashboard shows you the before/after token counts for every request, so you can measure the impact directly.
+
+[See the Context Optimizer documentation →](https://docs.gatectr.com) | [Start free →](https://app.gatectr.com/sign-up)
+
+## Measuring the Impact
+
+Track these metrics before and after optimization:
+
+- **Average input tokens per request** — the primary metric
+- **95th percentile input tokens** — catches outliers (long conversations, large RAG chunks)
+- **Token cost per endpoint** — shows which features are most expensive
+- **Cost per request over time** — confirms the optimization is stable
+
+A properly optimized context setup should show a 30–50% reduction in average input tokens with no measurable change in output quality. If quality drops, the optimization has gone too far — usually meaning the history window is too short or key context is being stripped.
+
+## Frequently Asked Questions
+
+### Does compressing context reduce output quality?
+
+It depends on what you compress. Removing redundant system prompt verbosity has essentially no quality impact — the model processes the same semantic content with fewer tokens. Aggressive history trimming can cause the model to lose track of earlier context in long conversations. The rule of thumb: keep the last 4–6 turns, summarize anything older.
+
+### How do I know if my optimization is working?
+
+Run a controlled test: send the same set of representative requests through optimized and unoptimized pipelines and compare output quality on a rubric relevant to your use case. For most tasks, a 40% token reduction produces output that is indistinguishable from the unoptimized version.

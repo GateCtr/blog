@@ -1,66 +1,152 @@
 ---
 slug: llm-model-routing-explained
-title: "LLM Model Routing: Sending the Right Task to the Right Model"
-excerpt: Not every task needs GPT-4. Smart model routing can cut costs dramatically by matching each request to the cheapest capable model — automatically.
+title: "LLM Model Routing Explained: Send Every Task to the Right Model"
+excerpt: LLM model routing cuts costs 30–50% by matching requests to the cheapest capable model. Here is how it works, and how to implement it without maintaining routing logic.
 author: GateCtr Team
 date: "2026-03-12"
 category: Model Routing
-readTime: 7
+readTime: 8
 ---
 
-One of the fastest ways to reduce LLM spend is also one of the most underused: routing different tasks to different models based on their actual complexity.
+The fastest way to reduce LLM spend is also the most underused: routing each request to the cheapest model that can handle it well. It sounds obvious. In practice, most teams never implement it — not because they disagree with the principle, but because building and maintaining routing logic is genuinely tedious.
 
-The intuition is simple. A request to classify a support ticket into one of five categories does not need the same model as a request to generate a nuanced technical explanation. The first task is fast, cheap, and perfectly handled by a small model. The second might genuinely benefit from a frontier model.
+This article explains how model routing works, what makes it difficult to implement correctly, and why the best teams delegate it to infrastructure rather than application code.
 
-## The Cost Gap Between Models
+## Why Model Choice Matters More Than You Think
 
-The price difference between models is larger than most people realize:
+The pricing gap between frontier models and capable smaller models has widened dramatically over the past two years. In 2026, the difference is not marginal — it is one to two orders of magnitude.
 
-- GPT-4 Turbo: ~$10 per million input tokens
-- GPT-3.5 Turbo: ~$0.50 per million input tokens
-- Smaller specialized models: ~$0.10–0.20 per million input tokens
+| Model | Input (per 1M tokens) | Output (per 1M tokens) | Best suited for |
+|-------|----------------------|------------------------|-----------------|
+| GPT-4o | ~$5.00 | ~$15.00 | Complex reasoning, nuanced generation |
+| Claude Sonnet 3.5 | ~$3.00 | ~$15.00 | Code generation, long-document analysis |
+| GPT-4o mini | ~$0.15 | ~$0.60 | Classification, extraction, simple Q&A |
+| Gemini 1.5 Flash | ~$0.075 | ~$0.30 | High-volume structured tasks, speed |
+| Llama 3 70B (hosted) | ~$0.05 | ~$0.05 | Internal tooling, low-sensitivity tasks |
 
-If even 60% of your requests can be handled by a cheaper model, you are looking at 50–80% cost reduction on those requests.
+If 60% of your production requests are simple classifications or short extractions, routing them to GPT-4o mini instead of GPT-4o cuts the cost of those requests by 97%. At scale, that is not a rounding error — it is the difference between a $10,000 monthly bill and a $4,000 one.
 
-## What Determines Routing
+## What Routing Decisions Are Based On
 
-Good routing decisions are based on a combination of signals:
+Good routing decisions combine several signals:
 
-**Task type** is the most important factor. Classification, extraction, and summarization of short texts are all candidates for cheaper models. Open-ended generation, complex reasoning, and multi-step planning benefit from larger models.
+### Task type
 
-**Input complexity** matters too. A short, well-structured prompt is more likely to be handled correctly by a smaller model. A long, ambiguous, or multi-part prompt often needs more capacity.
+The most reliable routing signal. Classification, entity extraction, short summarization, and intent detection are all tasks that small models handle well. Open-ended generation, complex multi-step reasoning, code generation in complex codebases, and nuanced content requiring judgment benefit from larger models.
 
-**Quality thresholds** should be configurable. For internal tooling, you might accept a slightly lower quality bar. For customer-facing features, you want the output to be excellent.
+### Prompt complexity
 
-## Implementing a Simple Router
+A short, well-structured prompt with a clear task is more likely to be handled correctly by a smaller model. A long, ambiguous prompt with multiple sub-tasks is a signal to route up.
 
-A basic routing strategy can be implemented with a classification step:
+### Required output quality
 
-```python
-def route_request(prompt: str, task_type: str) -> str:
-    simple_tasks = {"classify", "extract", "summarize_short"}
-    
-    if task_type in simple_tasks and len(prompt) < 1000:
-        return "gpt-3.5-turbo"
-    elif task_type == "code_generation":
-        return "gpt-4-turbo"
-    else:
-        return "gpt-4o"
+For internal tooling — data pipelines, internal search, admin automation — a slightly lower quality bar is usually acceptable. For customer-facing features, you want the best output the task requires.
+
+### Latency requirements
+
+Smaller models are faster. If a feature requires sub-500ms response times, the model selection is constrained regardless of cost.
+
+## The Routing Flow
+
+A request goes through the router before it reaches any model:
+
+```
+Application → Gateway → [Task Classifier] → Model Selection → Provider API
+                              ↓
+                    [Quality Monitor] ← Response
+                              ↓
+                    Route up if quality threshold not met
 ```
 
-This works, but it requires you to maintain the routing logic, keep model lists up to date, and handle fallbacks when a model underperforms.
+The classifier analyses the incoming request and assigns it to a complexity tier. The router selects the cheapest model in that tier. If the response quality falls below a configured threshold, the gateway retries with the next tier up — transparently, without the application knowing.
 
-## The Case for Automatic Routing
+## Implementing a Basic Router Yourself
 
-The better approach is to use a gateway that handles routing automatically. A well-implemented router:
+Here is what a manually maintained router looks like in practice:
 
-- Analyses each incoming request and selects the optimal model
-- Monitors output quality and routes up when quality drops
-- Keeps track of model performance and pricing in real time
-- Falls back gracefully when a model is unavailable
+```python
+import openai
+from dataclasses import dataclass
+from enum import Enum
 
-With automatic routing, you get the cost savings without the maintenance burden. And because the routing decisions are data-driven, they improve over time as the system learns which models handle which tasks well.
+class ComplexityTier(Enum):
+    SIMPLE = "simple"
+    MODERATE = "moderate"
+    COMPLEX = "complex"
 
-## Getting Started
+MODEL_MAP = {
+    ComplexityTier.SIMPLE: "gpt-4o-mini",
+    ComplexityTier.MODERATE: "claude-3-5-sonnet-20241022",
+    ComplexityTier.COMPLEX: "gpt-4o",
+}
 
-The simplest way to add model routing to your stack is to use a gateway that handles it transparently. Your application calls the same endpoint it always has. The gateway makes the routing decision. You see the savings in your monthly bill.
+SIMPLE_TASK_TYPES = {"classify", "extract", "summarize_short", "intent_detect"}
+COMPLEX_TASK_TYPES = {"code_generation", "analysis", "reasoning", "synthesis"}
+
+def classify_complexity(prompt: str, task_type: str) -> ComplexityTier:
+    if task_type in SIMPLE_TASK_TYPES and len(prompt) < 800:
+        return ComplexityTier.SIMPLE
+    elif task_type in COMPLEX_TASK_TYPES or len(prompt) > 4000:
+        return ComplexityTier.COMPLEX
+    else:
+        return ComplexityTier.MODERATE
+
+def route_request(prompt: str, task_type: str) -> str:
+    tier = classify_complexity(prompt, task_type)
+    return MODEL_MAP[tier]
+
+# Usage
+model = route_request(user_prompt, detected_task_type)
+response = openai.chat.completions.create(model=model, messages=[...])
+```
+
+This works for simple cases. The problems emerge quickly in production:
+
+- Model lists go stale as providers update pricing and capabilities
+- Quality thresholds require manual calibration per task type
+- Fallback logic — what happens when a model is unavailable? — adds complexity
+- Routing decisions are invisible: you cannot see which requests went where and why
+- The classifier itself needs maintenance as your product evolves
+
+## DIY Routing vs. Automatic Routing
+
+| | DIY Router | Automatic (Gateway) |
+|--|------------|---------------------|
+| Setup time | Days to weeks | Minutes |
+| Maintenance | Ongoing, as models change | Handled by gateway |
+| Fallback handling | You build it | Built in |
+| Quality monitoring | You instrument it | Automatic |
+| Per-request visibility | You log it | Dashboard included |
+| Model list updates | Manual | Real-time |
+
+The decision is not whether routing is worth doing — it clearly is. The decision is whether to own the infrastructure or delegate it.
+
+## How Automatic Routing Works in GateCtr
+
+GateCtr's Model Router operates transparently at the gateway level. You send requests to a single endpoint using your existing OpenAI-compatible client. The router classifies each request, selects the optimal model based on your configured policies, and returns the response.
+
+```bash
+# Your application code stays the same.
+# The base URL is the only change.
+curl https://api.gatectr.com/v1/chat/completions \
+  -H "Authorization: Bearer $GATECTR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "auto",
+    "messages": [{"role": "user", "content": "Classify this as billing, technical, or general: ..."}]
+  }'
+```
+
+Setting `model: "auto"` delegates the selection to the router. You can also set routing policies by endpoint, by request tag, or globally. The dashboard shows you exactly which model handled each request, the cost, and the routing reason — so you can tune the policy over time.
+
+Full routing policy documentation is available at [docs.gatectr.com](https://docs.gatectr.com). [Start free →](https://app.gatectr.com/sign-up)
+
+## Frequently Asked Questions
+
+### Can I override the router for specific requests?
+
+Yes. You can pin specific requests to a model by passing the model name explicitly instead of `"auto"`. This is useful for features where you have tested a specific model and want predictable behavior regardless of the routing policy.
+
+### What happens if the selected model is unavailable?
+
+The router falls back to the next capable model in the tier, then to the tier above if needed. Provider outages are handled transparently — your application receives a valid response without knowing which model ultimately handled the request.
