@@ -23,7 +23,7 @@ export default function Header() {
         </Link>
         <nav className={styles.nav}>
           <a href="https://gatectr.com" className={styles.navLink} target="_blank" rel="noopener noreferrer">
-            gatectr.com
+            Home
           </a>
           <a href="https://docs.gatectr.com" className={styles.navLink} target="_blank" rel="noopener noreferrer">
             Docs
