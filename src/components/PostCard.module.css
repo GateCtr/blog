@@ -111,6 +111,23 @@
   opacity: 0.75;
 }
 
+/* ── Mobile (≤ 768px) ───────────────────────── */
+@media (max-width: 768px) {
+  .body {
+    padding: 1rem 1.1rem;
+  }
+
+  .meta {
+    margin-bottom: 0.45rem;
+  }
+
+  .excerpt {
+    -webkit-line-clamp: 2;
+    margin-bottom: 0.8rem;
+    line-height: 1.55;
+  }
+}
+
 /* ── Mobile: featured → standard card (≤ 640px) */
 @media (max-width: 640px) {
   .card.featured {
@@ -119,11 +136,11 @@
   }
 
   .featured .body {
-    padding: 1.5rem;
+    padding: 1rem 1.1rem;
   }
 
   .featured .title {
-    font-size: 1.15rem;
+    font-size: 1.1rem;
   }
 }
 
@@ -131,6 +148,18 @@
 @media (max-width: 480px) {
   .body,
   .featured .body {
-    padding: 1.25rem;
+    padding: 0.9rem 1rem;
+  }
+
+  .title,
+  .featured .title {
+    font-size: 1rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .excerpt {
+    -webkit-line-clamp: 2;
+    margin-bottom: 0.65rem;
+    font-size: 0.85rem;
   }
 }
