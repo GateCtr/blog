@@ -27,6 +27,11 @@ export const t = {
     },
     feed: {
       empty: 'No articles found. Try a different search or topic.',
+      pagination: {
+        prev: '← Previous',
+        next: 'Next →',
+        of: 'of',
+      },
     },
     card: {
       readMore: 'Read more →',
@@ -100,6 +105,11 @@ export const t = {
     },
     feed: {
       empty: "Aucun article trouvé. Essayez un autre terme ou sujet.",
+      pagination: {
+        prev: '← Précédent',
+        next: 'Suivant →',
+        of: 'sur',
+      },
     },
     card: {
       readMore: "Lire la suite →",

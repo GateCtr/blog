@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getPosts, getCategories } from '../lib/posts';
 import { useLang } from '../context/LangContext';
 import { useTranslations } from '../lib/i18n';
 import PostCard from '../components/PostCard';
 import SEO from '../components/SEO';
 import styles from './Home.module.css';
+
+const POSTS_PER_PAGE = 6;
 
 const websiteSchemaBase = {
   '@context': 'https://schema.org',
@@ -24,11 +26,19 @@ const websiteSchemaBase = {
   ],
 };
 
+function pageNumbers(current: number, total: number): (number | '…')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  if (current <= 4) return [1, 2, 3, 4, 5, '…', total];
+  if (current >= total - 3) return [1, '…', total - 4, total - 3, total - 2, total - 1, total];
+  return [1, '…', current - 1, current, current + 1, '…', total];
+}
+
 export default function Home() {
   const { lang } = useLang();
   const tr = useTranslations(lang);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
   const posts = getPosts(lang);
   const categories = getCategories(lang);
@@ -42,8 +52,19 @@ export default function Home() {
     return matchesCategory && matchesSearch;
   });
 
-  const featured = filtered[0];
-  const rest = filtered.slice(1);
+  useEffect(() => {
+    setPage(1);
+  }, [search, selectedCategory, lang]);
+
+  const totalPages = Math.ceil(filtered.length / POSTS_PER_PAGE);
+  const paginated = filtered.slice((page - 1) * POSTS_PER_PAGE, page * POSTS_PER_PAGE);
+  const featured = page === 1 ? paginated[0] : undefined;
+  const rest = page === 1 ? paginated.slice(1) : paginated;
+
+  function goTo(p: number) {
+    setPage(p);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   const websiteSchema = {
     ...websiteSchemaBase,
@@ -150,6 +171,45 @@ export default function Home() {
                     <PostCard key={post.slug} post={post} />
                   ))}
                 </div>
+              )}
+
+              {totalPages > 1 && (
+                <nav className={styles.pagination} aria-label="Pagination">
+                  <button
+                    className={styles.pageBtn}
+                    onClick={() => goTo(page - 1)}
+                    disabled={page === 1}
+                    aria-label={tr.feed.pagination.prev}
+                  >
+                    {tr.feed.pagination.prev}
+                  </button>
+
+                  <div className={styles.pageNumbers}>
+                    {pageNumbers(page, totalPages).map((n, i) =>
+                      n === '…' ? (
+                        <span key={`ellipsis-${i}`} className={styles.ellipsis}>…</span>
+                      ) : (
+                        <button
+                          key={n}
+                          className={`${styles.pageNum} ${n === page ? styles.pageNumActive : ''}`}
+                          onClick={() => goTo(n)}
+                          aria-current={n === page ? 'page' : undefined}
+                        >
+                          {n}
+                        </button>
+                      )
+                    )}
+                  </div>
+
+                  <button
+                    className={styles.pageBtn}
+                    onClick={() => goTo(page + 1)}
+                    disabled={page === totalPages}
+                    aria-label={tr.feed.pagination.next}
+                  >
+                    {tr.feed.pagination.next}
+                  </button>
+                </nav>
               )}
             </>
           )}
