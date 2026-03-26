@@ -6,3 +6,9 @@ id = "6lLociLNYNVgzRD12gva6"
 uri = "file://complete-guide-to-gatectr.md"
 type = "text"
 title = "Complete Guide to GateCtr — Article EN (corrigé)"
+
+[[outputs]]
+id = "vVnb92fGPGSQx0AfE1x3n"
+uri = "file://guide-complet-gatectr.md"
+type = "text"
+title = "Guide complet GateCtr — Article FR"
