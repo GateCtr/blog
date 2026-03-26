@@ -146,6 +146,23 @@ app.post('/api/admin/login', (req, res) => {
   res.json({ token });
 });
 
+app.get('/api/health', (_req, res) => {
+  const email = EFFECTIVE_EMAIL;
+  const masked = email.length > 4
+    ? email.slice(0, 3) + '***' + email.slice(email.indexOf('@'))
+    : '***';
+  res.json({
+    ok: true,
+    env: {
+      email_configured: masked,
+      has_custom_email: !!process.env.ADMIN_EMAIL,
+      has_custom_password: !!process.env.ADMIN_PASSWORD,
+      has_jwt_secret: !!process.env.JWT_SECRET,
+      node_env: process.env.NODE_ENV ?? 'unset',
+    },
+  });
+});
+
 app.get('/api/admin/me', requireAuth, (req, res) => {
   const token = req.headers.authorization!.slice(7);
   const payload = jwt.decode(token) as { email: string };
