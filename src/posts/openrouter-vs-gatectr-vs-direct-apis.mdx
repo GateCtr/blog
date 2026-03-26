@@ -1,0 +1,194 @@
+---
+slug: openrouter-vs-gatectr-vs-direct-apis
+title: "OpenRouter vs GateCtr vs Direct APIs: Which Should You Use?"
+excerpt: Three ways to access LLMs — direct APIs, OpenRouter, and GateCtr. Here is an honest comparison of features, tradeoffs, and when each approach makes sense.
+author: GateCtr Team
+date: "2026-03-05"
+category: Model Routing
+readTime: 8
+---
+
+There are three ways to call an LLM in production: directly via the provider's API, through an aggregator like OpenRouter, or through a full-featured gateway like GateCtr. Each approach has a different feature set, a different cost structure, and a different maintenance burden.
+
+This article gives you an honest comparison of all three — including the real tradeoffs of the gateway option.
+
+## The Three Approaches
+
+### Direct APIs
+
+You call OpenAI, Anthropic, or Google directly. Each provider has its own endpoint, its own SDK, its own API key, and its own billing dashboard. This is how most teams start.
+
+```python
+# Direct OpenAI
+from openai import OpenAI
+client = OpenAI(api_key="sk-openai-key")
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Hello"}]
+)
+
+# Direct Anthropic (separate SDK)
+import anthropic
+anth_client = anthropic.Anthropic(api_key="sk-ant-key")
+message = anth_client.messages.create(
+    model="claude-3-7-sonnet-20250219",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Hello"}]
+)
+```
+
+**Pros:** Maximum control, no intermediary, direct billing relationship with providers, lowest latency.
+
+**Cons:** Multiple SDKs, multiple keys to manage, no centralized cost tracking, no routing, no budget controls, fallback logic must be built from scratch.
+
+### OpenRouter
+
+OpenRouter is an aggregator: it provides a single OpenAI-compatible endpoint that routes requests to hundreds of models from dozens of providers. You get one API key, one billing dashboard, and access to virtually every commercially available LLM.
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="sk-or-openrouter-key",
+    base_url="https://openrouter.ai/api/v1"
+)
+
+response = client.chat.completions.create(
+    model="anthropic/claude-3.7-sonnet",  # Use provider/model notation
+    messages=[{"role": "user", "content": "Hello"}]
+)
+```
+
+**Pros:** Huge model catalog, single API key, OpenAI-compatible, easy to switch models, competitive pricing on some models.
+
+**Cons:** No budget controls, no context optimization, limited analytics (no per-team or per-feature breakdown), no enterprise RBAC, no budget firewall, primarily a routing aggregator rather than a full infrastructure layer.
+
+### GateCtr
+
+GateCtr is an LLM gateway: a transparent proxy that sits between your application and the providers, adding a full infrastructure layer — context optimization, intelligent routing, budget enforcement, usage analytics, and access control.
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="gatectr-api-key",
+    base_url="https://api.gatectr.com/v1"
+)
+
+# Same API call — gateway handles everything transparently
+response = client.chat.completions.create(
+    model="gpt-4o",  # Or "auto" to let the router decide
+    messages=[{"role": "user", "content": "Hello"}]
+)
+```
+
+**Pros:** Full infrastructure layer (routing, context optimization, budget firewall, analytics), drop-in compatible, enterprise RBAC, per-request cost tracking across all providers.
+
+**Cons:** Adds a network hop (typically under 10ms overhead), requires trust in a third-party proxy for your LLM traffic.
+
+## Feature Comparison
+
+| Feature | Direct APIs | OpenRouter | GateCtr |
+|---------|-------------|------------|---------|
+| Single API endpoint | ✗ | ✓ | ✓ |
+| OpenAI-compatible format | ✓ (OpenAI only) | ✓ | ✓ |
+| Model catalog breadth | One provider | Very large | Major providers |
+| Context optimization | ✗ | ✗ | ✓ |
+| Intelligent model routing | ✗ | ✗ | ✓ |
+| Hard budget caps | ✗ | ✗ | ✓ |
+| Soft alerts at thresholds | ✗ | ✗ | ✓ |
+| Per-request cost logging | Manual | Limited | ✓ |
+| Per-team / per-project budgets | ✗ | ✗ | ✓ |
+| Enterprise RBAC | ✗ | ✗ | ✓ |
+| Provider fallback | Manual | Partial | ✓ |
+| Latency overhead | None | ~15–30ms | under 10ms |
+
+## Calling the Same Request Through All Three
+
+Here is the exact same LLM call via each approach, so you can see the practical difference:
+
+```python
+from openai import OpenAI
+
+# 1. Direct API — one provider, no extras
+direct_client = OpenAI(
+    api_key="sk-openai-key"
+)
+
+# 2. OpenRouter — many models, one key
+openrouter_client = OpenAI(
+    api_key="sk-or-key",
+    base_url="https://openrouter.ai/api/v1"
+)
+
+# 3. GateCtr — full infrastructure layer
+gatectr_client = OpenAI(
+    api_key="gc-key",
+    base_url="https://api.gatectr.com/v1"
+)
+
+messages = [{"role": "user", "content": "Classify this support ticket: can't log in"}]
+
+# All three use the same call structure
+for name, client in [
+    ("Direct", direct_client),
+    ("OpenRouter", openrouter_client),
+    ("GateCtr", gatectr_client),
+]:
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages
+    )
+    print(f"{name}: {response.choices[0].message.content}")
+```
+
+The code is identical. The behavior differs: Direct gives you the raw response. OpenRouter potentially switches to a cheaper model variant. GateCtr optimizes the context, routes to GPT-4o mini (for this simple task), enforces your budget limit, and logs the cost to your dashboard.
+
+---
+
+**Want the full infrastructure layer for free?** [Start free →](https://app.gatectr.com/sign-up)
+
+---
+
+## When to Use Each Approach
+
+**Use Direct APIs when:**
+- You use exactly one provider and have no plans to change
+- You are in early development and simplicity matters more than optimization
+- You need the absolute lowest latency and every millisecond counts
+- You have specific data residency or compliance requirements that exclude third-party proxies
+
+**Use OpenRouter when:**
+- You want to experiment with a wide range of models quickly
+- You need access to models from smaller providers not available via direct API
+- Your primary need is model breadth, not cost optimization or budget control
+- You are a solo developer or small team with straightforward LLM usage
+
+**Use GateCtr when:**
+- You are spending more than $1K/month on LLM inference and want to reduce it
+- You need budget controls at the team, project, or user level
+- You are building a product where multiple users trigger LLM calls
+- You want unified cost visibility across multiple providers without building analytics yourself
+- You need to comply with spending policies or internal budgets for AI usage
+
+## The Latency Question
+
+The most common objection to using a gateway is latency. If GateCtr adds a network hop, how much does that matter?
+
+In practice, under 10ms. The model inference itself takes 500ms–3,000ms depending on the model and response length. A 10ms gateway overhead is less than 2% added latency in the worst case, and well under 1% in the typical case. For most applications, this is not a meaningful tradeoff.
+
+[read the docs](https://docs.gatectr.com) for architecture details and latency benchmarks.
+
+## Frequently Asked Questions
+
+### Is OpenRouter free?
+
+OpenRouter does not charge a markup on most models — you pay approximately the provider's list price, and in some cases they negotiate bulk rates that are slightly below list. There is no monthly fee for basic usage. They make money through volume and some premium features. For high-volume enterprise usage, pricing varies.
+
+### Does GateCtr support all the models on OpenRouter?
+
+GateCtr supports the major commercial providers: OpenAI, Anthropic, and Google. OpenRouter has a broader catalog including many smaller and open-source model hosts. If you need access to models from niche providers or self-hosted models, OpenRouter's catalog is larger. GateCtr focuses on the models that run the majority of production AI workloads.
+
+### Can I self-host either?
+
+OpenRouter is a hosted service only. GateCtr offers a cloud-hosted gateway with enterprise deployment options for teams that require data residency or on-premise operation. For teams with strict data sovereignty requirements, contact the GateCtr team to discuss deployment options.
