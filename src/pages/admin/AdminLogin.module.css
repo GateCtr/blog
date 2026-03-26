@@ -1,0 +1,99 @@
+.page {
+  min-height: 100vh;
+  background: var(--color-navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 2.5rem 2rem;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--color-navy);
+  text-align: center;
+  margin-bottom: 0.25rem;
+}
+
+.ctr {
+  color: var(--color-cyan);
+}
+
+.title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #64748b;
+  text-align: center;
+  margin: 0 0 2rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-navy);
+  margin-top: 0.5rem;
+}
+
+.input {
+  padding: 0.65rem 0.9rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: #1e293b;
+  background: #f8fafc;
+  transition: border-color 0.15s;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--color-cyan);
+  background: #fff;
+}
+
+.input:disabled {
+  opacity: 0.7;
+}
+
+.error {
+  color: #dc2626;
+  font-size: 0.85rem;
+  margin: 0.25rem 0;
+}
+
+.btn {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: var(--color-navy);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn:hover:not(:disabled) {
+  background: #1e5fa0;
+}
+
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
