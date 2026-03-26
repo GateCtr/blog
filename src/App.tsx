@@ -22,6 +22,7 @@ export default function App() {
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/editor" element={<AdminEditor />} />
+              <Route path="/admin/editor/:lang/:slug" element={<AdminEditor />} />
               <Route
                 path="*"
                 element={

@@ -151,6 +151,25 @@ app.get('/api/admin/articles', requireAuth, (_req, res) => {
   res.json([...en, ...fr]);
 });
 
+app.get('/api/admin/articles/:lang/:slug', requireAuth, (req, res) => {
+  const { lang, slug } = req.params as { lang: string; slug: string };
+  if (lang !== 'en' && lang !== 'fr') {
+    res.status(400).json({ error: 'lang doit être "en" ou "fr".' });
+    return;
+  }
+  const dir = lang === 'fr' ? join(POSTS_DIR, 'fr') : POSTS_DIR;
+  const filePath = join(dir, `${slug}.mdx`);
+  if (!existsSync(filePath)) {
+    res.status(404).json({ error: 'Article introuvable.' });
+    return;
+  }
+  const raw = readFileSync(filePath, 'utf-8');
+  const fm = parseFrontmatter(raw);
+  const bodyMatch = raw.match(/^---\n[\s\S]*?\n---\n?([\s\S]*)$/);
+  const body = bodyMatch ? bodyMatch[1].trimStart() : raw;
+  res.json({ frontmatter: fm, body, lang });
+});
+
 app.post('/api/admin/articles', requireAuth, (req, res) => {
   const { lang, slug, frontmatter, body } = req.body as {
     lang: 'en' | 'fr';

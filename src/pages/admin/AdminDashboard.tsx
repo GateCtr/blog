@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import { useAdmin } from '../../context/AdminContext';
 import styles from './AdminDashboard.module.css';
@@ -24,14 +25,16 @@ interface ArticleMeta {
 
 export default function AdminDashboard() {
   const { token } = useAdmin();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<StatsData | null>(null);
   const [articles, setArticles] = useState<ArticleMeta[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deleteSlug, setDeleteSlug] = useState<string | null>(null);
+  const [deleteKey, setDeleteKey] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   async function loadData() {
     setLoading(true);
+    setError('');
     try {
       const [statsRes, artRes] = await Promise.all([
         fetch('/api/stats'),
@@ -50,7 +53,8 @@ export default function AdminDashboard() {
 
   async function handleDelete(lang: string, slug: string) {
     if (!confirm(`Supprimer l'article "${slug}" (${lang}) ?`)) return;
-    setDeleteSlug(slug);
+    const key = `${lang}-${slug}`;
+    setDeleteKey(key);
     try {
       const res = await fetch(`/api/admin/articles/${lang}/${slug}`, {
         method: 'DELETE',
@@ -65,17 +69,28 @@ export default function AdminDashboard() {
     } catch {
       setError('Erreur réseau.');
     } finally {
-      setDeleteSlug(null);
+      setDeleteKey(null);
     }
   }
 
   const articleStats: ArticleStat[] = stats
-    ? Object.entries(stats.articles).map(([slug, s]) => ({ slug, ...s })).sort((a, b) => b.views - a.views)
+    ? Object.entries(stats.articles)
+        .map(([slug, s]) => ({ slug, ...s }))
+        .sort((a, b) => b.views - a.views)
     : [];
+
+  const top5 = articleStats.slice(0, 5);
+  const maxViews = top5[0]?.views ?? 1;
 
   return (
     <AdminLayout>
-      <h1 className={styles.pageTitle}>Dashboard</h1>
+      <div className={styles.pageHeader}>
+        <h1 className={styles.pageTitle}>Dashboard</h1>
+        <button className={styles.newBtn} onClick={() => navigate('/admin/editor')}>
+          + Nouvel article
+        </button>
+      </div>
+
       {error && <p className={styles.error}>{error}</p>}
 
       <div className={styles.kpiRow}>
@@ -97,6 +112,28 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {!loading && top5.length > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Top 5 articles (vues)</h2>
+          <div className={styles.barList}>
+            {top5.map(a => (
+              <div key={a.slug} className={styles.barItem}>
+                <div className={styles.barMeta}>
+                  <span className={styles.barSlug}>{a.slug}</span>
+                  <span className={styles.barCount}>{a.views.toLocaleString()} vues</span>
+                </div>
+                <div className={styles.barTrack}>
+                  <div
+                    className={styles.barFill}
+                    style={{ width: `${Math.round((a.views / maxViews) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Statistiques par article</h2>
         {loading ? (
@@ -110,7 +147,7 @@ export default function AdminDashboard() {
                 <tr>
                   <th>Slug</th>
                   <th>Vues</th>
-                  <th>Lectures (80%)</th>
+                  <th>Lectures (80 %)</th>
                   <th>Taux de lecture</th>
                 </tr>
               </thead>
@@ -148,23 +185,36 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {articles.map(a => (
-                  <tr key={`${a.lang}-${a.slug}`}>
-                    <td className={styles.titleCell}>{a.title}</td>
-                    <td><span className={`${styles.badge} ${a.lang === 'fr' ? styles.badgeFr : styles.badgeEn}`}>{a.lang.toUpperCase()}</span></td>
-                    <td>{a.category}</td>
-                    <td className={styles.dateCell}>{a.date}</td>
-                    <td>
-                      <button
-                        className={styles.deleteBtn}
-                        onClick={() => handleDelete(a.lang, a.slug)}
-                        disabled={deleteSlug === a.slug}
-                      >
-                        {deleteSlug === a.slug ? '…' : 'Supprimer'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {articles.map(a => {
+                  const key = `${a.lang}-${a.slug}`;
+                  return (
+                    <tr key={key}>
+                      <td className={styles.titleCell}>{a.title}</td>
+                      <td>
+                        <span className={`${styles.badge} ${a.lang === 'fr' ? styles.badgeFr : styles.badgeEn}`}>
+                          {a.lang.toUpperCase()}
+                        </span>
+                      </td>
+                      <td>{a.category}</td>
+                      <td className={styles.dateCell}>{a.date}</td>
+                      <td className={styles.actionsCell}>
+                        <button
+                          className={styles.editBtn}
+                          onClick={() => navigate(`/admin/editor/${a.lang}/${a.slug}`)}
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          className={styles.deleteBtn}
+                          onClick={() => handleDelete(a.lang, a.slug)}
+                          disabled={deleteKey === key}
+                        >
+                          {deleteKey === key ? '…' : 'Supprimer'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
