@@ -44,7 +44,7 @@ export default function About() {
               <strong>gatectr.com</strong> — the main product site with pricing, features, and access requests.
             </p>
             <p>
-              <strong>app.gatectr.com</strong> — the dashboard where you manage routing rules, budget limits, and usage analytics.
+              <strong>app.gatectr.com</strong> — the app and authentication space. Sign in at <strong>app.gatectr.com/sign-in</strong> to manage routing rules, budget limits, and usage analytics.
             </p>
             <p>
               <strong>docs.gatectr.com</strong> — integration guides, API reference, and configuration documentation.
@@ -54,7 +54,7 @@ export default function About() {
           <div className={styles.ctaBox}>
             <h3 className={styles.ctaTitle}>Cut LLM costs by 40%</h3>
             <p className={styles.ctaText}>One endpoint swap. Full control over tokens, budgets, and routing.</p>
-            <a href="https://app.gatectr.com" className={styles.ctaBtn} target="_blank" rel="noopener noreferrer">
+            <a href="https://gatectr.com" className={styles.ctaBtn} target="_blank" rel="noopener noreferrer">
               Request access →
             </a>
           </div>

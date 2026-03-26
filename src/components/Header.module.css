@@ -71,15 +71,29 @@
   background: rgba(27, 79, 130, 0.07);
 }
 
+.signInBtn {
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  transition: color var(--transition), background var(--transition);
+}
+
+.signInBtn:hover {
+  color: var(--color-text);
+  background: var(--color-bg-secondary);
+}
+
 .ctaBtn {
-  margin-left: 0.5rem;
+  margin-left: 0.25rem;
   padding: 0.45rem 1rem;
   background: var(--color-navy);
   color: white;
   border-radius: var(--radius-sm);
   font-size: 0.875rem;
   font-weight: 600;
-  transition: background var(--transition), transform var(--transition);
+  transition: background var(--transition);
 }
 
 .ctaBtn:hover {

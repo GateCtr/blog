@@ -7,7 +7,7 @@ export default function Footer() {
         <div className={styles.links}>
           <a href="https://gatectr.com" target="_blank" rel="noopener noreferrer" className={styles.link}>gatectr.com</a>
           <span className={styles.sep}>·</span>
-          <a href="https://app.gatectr.com" target="_blank" rel="noopener noreferrer" className={styles.link}>app.gatectr.com</a>
+          <a href="https://app.gatectr.com/sign-in" target="_blank" rel="noopener noreferrer" className={styles.link}>Sign in</a>
           <span className={styles.sep}>·</span>
           <a href="https://docs.gatectr.com" target="_blank" rel="noopener noreferrer" className={styles.link}>docs.gatectr.com</a>
         </div>

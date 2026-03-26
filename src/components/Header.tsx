@@ -23,10 +23,7 @@ export default function Header() {
         </Link>
         <nav className={styles.nav}>
           <a href="https://gatectr.com" className={styles.navLink} target="_blank" rel="noopener noreferrer">
-            Home
-          </a>
-          <a href="https://app.gatectr.com" className={styles.navLink} target="_blank" rel="noopener noreferrer">
-            App
+            gatectr.com
           </a>
           <a href="https://docs.gatectr.com" className={styles.navLink} target="_blank" rel="noopener noreferrer">
             Docs
@@ -37,6 +34,9 @@ export default function Header() {
           >
             About
           </Link>
+          <a href="https://app.gatectr.com/sign-in" className={styles.signInBtn} target="_blank" rel="noopener noreferrer">
+            Sign in
+          </a>
           <a href="https://app.gatectr.com" className={styles.ctaBtn} target="_blank" rel="noopener noreferrer">
             Start free
           </a>
