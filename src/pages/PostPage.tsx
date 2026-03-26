@@ -61,6 +61,10 @@ export default function PostPage() {
   const canonicalPath = `/post/${post.slug}`;
   const postUrl = `${BASE_URL}${canonicalPath}`;
 
+  const coverImageUrl = post.coverImage
+    ? (post.coverImage.startsWith('http') ? post.coverImage : `${BASE_URL}${post.coverImage}`)
+    : undefined;
+
   const blogPostingSchema = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
@@ -73,6 +77,7 @@ export default function PostPage() {
     articleSection: post.category,
     timeRequired: `PT${post.readTime}M`,
     isPartOf: { '@type': 'Blog', name: 'GateCtr Blog', url: BASE_URL },
+    ...(coverImageUrl ? { image: coverImageUrl } : {}),
   };
 
   return (
@@ -89,6 +94,7 @@ export default function PostPage() {
         }}
         jsonLd={blogPostingSchema}
         lang={lang}
+        image={post.coverImage}
       />
 
       <div className={styles.container}>
@@ -112,6 +118,14 @@ export default function PostPage() {
               <span className={styles.author}>{post.author}</span>
             </div>
           </header>
+
+          {post.coverImage && (
+            <img
+              src={post.coverImage}
+              alt={post.title}
+              className={styles.featuredImage}
+            />
+          )}
 
           <div className={styles.divider} />
 

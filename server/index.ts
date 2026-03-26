@@ -80,6 +80,7 @@ interface ArticleFrontmatter {
   category: string;
   readTime: number;
   publishAt?: string;
+  coverImage?: string;
 }
 
 function parseFrontmatter(content: string): ArticleFrontmatter | null {

@@ -24,6 +24,7 @@ interface ArticlePayload {
     category: string;
     readTime: number;
     publishAt?: string;
+    coverImage?: string;
   };
   body: string;
   lang: 'en' | 'fr';
@@ -57,6 +58,7 @@ export default function AdminEditor() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [category, setCategory] = useState('');
   const [readTime, setReadTime] = useState('5');
+  const [coverImage, setCoverImage] = useState('');
   const [publishAt, setPublishAt] = useState('');
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(false);
@@ -101,6 +103,7 @@ export default function AdminEditor() {
         setDate(fm.date ?? new Date().toISOString().slice(0, 10));
         setCategory(fm.category ?? '');
         setReadTime(String(fm.readTime ?? 5));
+        setCoverImage(fm.coverImage ?? '');
         setPublishAt(fm.publishAt ?? '');
         setBody(data.body ?? '');
       })
@@ -150,6 +153,7 @@ export default function AdminEditor() {
           frontmatter: {
             slug, title, excerpt, author, date, category,
             readTime: parseInt(readTime, 10),
+            ...(coverImage ? { coverImage } : {}),
             ...(publishAt ? { publishAt } : {}),
           },
           body,
@@ -333,6 +337,32 @@ export default function AdminEditor() {
                 Laisser vide pour publier immédiatement. Si une date future est choisie, l'article n'apparaîtra pas sur le blog avant cette date.
               </p>
             </div>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>
+              Image à la une
+              <span className={styles.labelHint}> (optionnel — URL absolue)</span>
+            </label>
+            <input
+              type="url"
+              className={styles.input}
+              value={coverImage}
+              onChange={e => setCoverImage(e.target.value)}
+              placeholder="https://images.unsplash.com/…  ou  /images/mon-article.jpg"
+            />
+            {coverImage && (
+              <img
+                src={coverImage}
+                alt="Aperçu image à la une"
+                className={styles.imagePreview}
+                onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                onLoad={e => { (e.target as HTMLImageElement).style.display = 'block'; }}
+              />
+            )}
+            <p className={styles.hint}>
+              Hébergez votre image sur Cloudinary, Unsplash, ou dans <code>/public/images/</code> du dépôt. Elle sera aussi utilisée comme og:image.
+            </p>
           </div>
 
           <div className={styles.field}>

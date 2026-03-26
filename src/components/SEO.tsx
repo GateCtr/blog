@@ -29,6 +29,7 @@ interface SEOProps {
   article?: ArticleMeta;
   jsonLd?: object;
   lang?: Lang;
+  image?: string;
 }
 
 export default function SEO({
@@ -39,10 +40,14 @@ export default function SEO({
   article,
   jsonLd,
   lang = 'en',
+  image,
 }: SEOProps) {
   const fullTitle = `${title} — ${SITE_NAME}`;
   const url = canonical ? `${BASE_URL}${canonical}` : BASE_URL;
   const htmlLang = lang === 'fr' ? 'fr' : 'en';
+  const ogImage = image
+    ? (image.startsWith('http') ? image : `${BASE_URL}${image}`)
+    : DEFAULT_IMAGE;
 
   return (
     <Helmet>
@@ -60,13 +65,14 @@ export default function SEO({
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:url" content={url} />
-      <meta property="og:image" content={DEFAULT_IMAGE} />
+      <meta property="og:image" content={ogImage} />
       <meta property="og:locale" content={OG_LOCALE[lang]} />
       <meta property="og:locale:alternate" content={ALTERNATE_LOCALE[lang]} />
 
-      <meta name="twitter:card" content="summary" />
+      <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={description} />
+      <meta name="twitter:image" content={ogImage} />
 
       {article && (
         <meta property="article:published_time" content={article.publishedTime} />
